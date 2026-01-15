@@ -17,6 +17,12 @@ const mfaController = require('../controllers/mfaController');
  */
 router.get('/me', authController.getCurrentUser);
 
+/**
+ * Terminate Session (Logout)
+ * Clears the HttpOnly session cookie for Level 1.
+ */
+router.post('/logout', level1Controller.logout);
+
 
 // ==========================================
 // AUTHENTICATION STRATEGIES
@@ -53,8 +59,8 @@ router.post('/mfa/disable', mfaController.disableMFA);
  * These routes allow provisioning and termination of lab users.
  */
 
-router.post('/admin/login', authController.adminLogin);     // Admin Authentication Route
-router.get('/admin/users', authController.listUsers);       // Fetch all users
+router.post('/admin/login', authController.adminLogin);      // Admin Authentication Route
+router.get('/admin/users', authController.listUsers);        // Fetch all users
 router.post('/admin/users', authController.createUser);      // Create a new user
 router.delete('/admin/users/:id', authController.deleteUser); // Delete user by ID
 

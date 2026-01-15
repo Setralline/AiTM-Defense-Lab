@@ -58,6 +58,14 @@ Once the project is running, you can test the following:
 
 ---
 
+## Key Security Features
+
+* **Session Termination:** Implements `res.clearCookie` with `HttpOnly` attributes to ensure session identifiers are purged from the browser upon logout, preventing replay attacks.
+* **Hybrid Auth Research:** A comparative environment to study the vulnerability differences between **Cookie-based (Level 1)** and **Token-based (Level 2)** authentication in reverse-proxy scenarios.
+* **MFA Defense:** Integrated TOTP logic to analyze how multi-factor authentication acts as a secondary barrier against session hijacking.
+
+---
+
 ## Future Roadmap
 
 This lab is designed to be extensible. We plan to add more modules in the future covering:
@@ -77,3 +85,4 @@ This software is strictly for **educational and research purposes**. It was deve
 ### Tags
 
 `cybersecurity` `phishing-simulation` `aitm-defense` `mfa-bypass` `evilginx-analysis` `react19` `node-js` `master-thesis`
+

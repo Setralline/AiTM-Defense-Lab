@@ -1,59 +1,58 @@
-const bcrypt = require('bcryptjs'); // For password hashing
+const bcrypt = require('bcryptjs');
 const pool = require('../config/db');
 const { generateToken } = require('../utils/helpers');
 
 /**
  * Level 1 Login: Legacy/Cookie Approach
- * Sets an HttpOnly cookie upon successful authentication.
+ * Authenticates user and sets an HttpOnly session cookie.
  */
 exports.loginLevel1 = async (req, res) => {
   const { email, password, rememberMe } = req.body;
 
   try {
-    // 1. Check if user exists
+    // 1. Verify user existence
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     const user = result.rows[0];
 
     if (!user) {
-      // Use generic error message to prevent User Enumeration
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // 2. Validate Password (Hash Comparison)
-    // NOTE: Ensure your DB has hashed passwords. For testing "password123", hash it first.
-    // If using plain text for lab demo only, use: if (user.password !== password)
+    // 2. Validate password via hash comparison
     const isMatch = await bcrypt.compare(password, user.password);
     
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // 3. Convert rememberMe string/boolean to boolean
+    // 3. Normalize rememberMe value to boolean
     const isRemembered = rememberMe === 'true' || rememberMe === true;
 
-    // 4. Generate Token
+    // 4. Generate authentication token
     const token = generateToken(user, isRemembered);
 
-    // 5. Check if MFA is enabled
+    // 5. Handle Multi-Factor Authentication (MFA) if enabled
     if (user.mfa_secret) {
       return res.json({ 
         mfa_required: true, 
-        temp_token: token // In a real app, use a short-lived temporary token here
+        temp_token: token 
       });
     }
 
-    // 6. Set Secure Cookie
+    // 6. Define cookie duration (1 year vs 1 hour)
     const oneYear = 365 * 24 * 60 * 60 * 1000;
     const oneHour = 60 * 60 * 1000;
     
+    // 7. Set secure HttpOnly cookie
     res.cookie('session_id', token, {
-      httpOnly: true, // Prevent XSS theft
-      secure: process.env.NODE_ENV === 'production', // Send only over HTTPS in prod
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // CSRF protection
-      maxAge: isRemembered ? oneYear : oneHour
+      httpOnly: true, // Mitigates XSS by hiding cookie from JavaScript
+      secure: process.env.NODE_ENV === 'production', 
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      maxAge: isRemembered ? oneYear : oneHour,
+      path: '/' // Must match the logout path for successful deletion
     });
 
-    // 7. Respond with User Data (No sensitive info)
+    // 8. Send success response with non-sensitive user profile
     res.json({ 
       success: true, 
       user: { id: user.id, name: user.name, email: user.email, mfa_secret: user.mfa_secret } 
@@ -62,5 +61,26 @@ exports.loginLevel1 = async (req, res) => {
   } catch (err) {
     console.error('Level 1 Login Error:', err);
     res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Terminate Session (Logout)
+ * Clears the session_id cookie from the browser.
+ */
+exports.logout = async (req, res) => {
+  try {
+    // Instructs browser to delete the cookie by setting an expired date
+    res.clearCookie('session_id', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      path: '/' // Must match the path used during cookie creation
+    });
+
+    res.json({ success: true, message: 'Session terminated and cookie cleared' });
+  } catch (err) {
+    console.error('Logout Error:', err);
+    res.status(500).json({ message: 'Failed to terminate session' });
   }
 };

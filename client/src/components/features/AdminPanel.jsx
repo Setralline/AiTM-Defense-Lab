@@ -15,15 +15,28 @@ const AdminPanel = () => {
   const [users, setUsers] = useState([]);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', isAdmin: false });
 
-  useEffect(() => { if (isAdminLoggedIn) fetchUsers(); }, [isAdminLoggedIn]);
+  // Sync session state with directory fetching
+  useEffect(() => { 
+    if (isAdminLoggedIn) fetchUsers(); 
+  }, [isAdminLoggedIn]);
 
+  /**
+   * Fetch Active Directory
+   * Retrieves all users from the database for administrative management.
+   */
   const fetchUsers = async () => {
     try {
       const data = await authService.getAllUsers();
       setUsers(data.users || []);
-    } catch (err) { toast.error("Failed to fetch directory."); }
+    } catch (err) { 
+      toast.error("Failed to fetch directory."); 
+    }
   };
 
+  /**
+   * Admin Authentication Sequence
+   * Authenticates using laboratory credentials and establishes a session.
+   */
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     const tId = toast.loading('Authenticating...');
@@ -34,9 +47,15 @@ const AdminPanel = () => {
         setIsAdminLoggedIn(true);
         toast.success('Access Granted.', { id: tId });
       }
-    } catch (err) { toast.error('Access Denied.', { id: tId }); }
+    } catch (err) { 
+      toast.error('Access Denied.', { id: tId }); 
+    }
   };
 
+  /**
+   * Account Provisioning
+   * Creates new operative or admin accounts with hashed credentials.
+   */
   const handleCreateOperative = async (e) => {
     e.preventDefault();
     const tId = toast.loading('Provisioning...');
@@ -45,9 +64,15 @@ const AdminPanel = () => {
       toast.success(`${newUser.isAdmin ? 'Admin' : 'Operative'} added.`, { id: tId });
       setNewUser({ name: '', email: '', password: '', isAdmin: false });
       fetchUsers();
-    } catch (err) { toast.error('Provisioning failed.', { id: tId }); }
+    } catch (err) { 
+      toast.error('Provisioning failed.', { id: tId }); 
+    }
   };
 
+  /**
+   * Operative Purge
+   * Permanently deletes a user from the database.
+   */
   const handleDeleteOperative = async (id) => {
     if (!window.confirm("CRITICAL: Purge data?")) return;
     const tId = toast.loading('Purging...');
@@ -55,7 +80,20 @@ const AdminPanel = () => {
       await authService.deleteUser(id);
       toast.success('Operative purged.', { id: tId });
       fetchUsers();
-    } catch (err) { toast.error('Purge failed.', { id: tId }); }
+    } catch (err) { 
+      toast.error('Purge failed.', { id: tId }); 
+    }
+  };
+
+  /**
+   * Security Lock
+   * Terminates the administrative session.
+   */
+  const handleLockPanel = () => {
+    sessionStorage.removeItem('lab_admin_session');
+    setIsAdminLoggedIn(false);
+    toast('Terminal Locked.', { icon: '🔒' });
+    navigate('/');
   };
 
   if (!isAdminLoggedIn) return (
@@ -75,7 +113,7 @@ const AdminPanel = () => {
     <div style={styles.adminContainer}>
       <div style={styles.toolbar}>
         <Button variant="secondary" fullWidth onClick={() => navigate('/')}><FaArrowLeft /> BASE</Button>
-        <Button variant="danger" fullWidth onClick={() => { sessionStorage.removeItem('lab_admin_session'); setIsAdminLoggedIn(false); toast('Locked.', {icon: '🔒'}); }} >LOCK PANEL</Button>
+        <Button variant="danger" fullWidth onClick={handleLockPanel}>LOCK PANEL</Button>
       </div>
 
       <Card title="PROVISION ACCOUNT">

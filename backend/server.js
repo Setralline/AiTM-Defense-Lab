@@ -15,10 +15,11 @@ const app = express();
 // Security Middleware (OWASP)
 // =========================================================================
 
-// 1. Secure HTTP Headers
+// 1. Secure HTTP Headers - Protects against well-known web vulnerabilities
 app.use(helmet());
 
 // 2. Cross-Origin Resource Sharing (CORS) Configuration
+// Must allow credentials for HttpOnly cookies to work between frontend and backend
 const whitelist = process.env.NODE_ENV === 'production' 
   ? ['https://your-production-domain.com'] 
   : ['http://localhost:5173', 'http://127.0.0.1:5173'];
@@ -31,18 +32,18 @@ const corsOptions = {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true, 
+  credentials: true, // Required to allow browser to send/receive cookies
   methods: ['GET', 'POST', 'PUT', 'DELETE']
 };
 
 app.use(cors(corsOptions));
 
-// 3. Body Parsers
+// 3. Body Parsers & Cookie Middleware
 app.use(express.json({ limit: '10kb' })); 
 app.use(express.urlencoded({ extended: true })); 
-app.use(cookieParser());
+app.use(cookieParser()); // Enables reading and clearing HttpOnly cookies
 
-// 4. Global Rate Limiter
+// 4. Global Rate Limiter - Prevents Brute Force attacks on the lab
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, 
   max: 100, 
@@ -65,8 +66,8 @@ app.get('/health', (req, res) => res.status(200).send('OK'));
 const startServer = async () => {
   try {
     // 1. Test Database Connection
-    const res = await pool.query('SELECT NOW()');
-    console.log(`Database Connected: ${res.rows[0].now}`);
+    const dbRes = await pool.query('SELECT NOW()');
+    console.log(`Database Connected: ${dbRes.rows[0].now}`);
 
     // 2. Initialize the database with the default admin (Lab persistence)
     await createInitialAdmin();

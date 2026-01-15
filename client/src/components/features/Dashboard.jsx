@@ -8,13 +8,37 @@ import useMFA from '../../hooks/useMFA';
 import Card from '../layout/Card';
 import Button from '../ui/Button';
 import { cyberStyles as styles } from '../../utils/themeStyles'; 
+import authService from '../../services/authService';
 
 const Dashboard = ({ user, setUser, onLogout }) => {
   const { isMfaEnabled, qrCode, setQrCode, enableMFA, disableMFA, loading, error } = useMFA(user, setUser);
 
-  const handleLogout = () => {
-    toast('Session locked.', { icon: '🚫' });
-    onLogout();
+  /**
+   * Terminate Session
+   * Synchronizes with the backend to clear cookies and resets local state.
+   */
+  const handleLogout = async () => {
+    try {
+      // 1. Call backend to clear HttpOnly cookies and storage tokens
+      await authService.logout();
+      
+      // 2. Visual feedback for the operative
+      toast('Session terminated. Security lock active.', { 
+        icon: '🚫',
+        style: {
+          borderRadius: '0',
+          background: '#1a1a1a',
+          color: '#ff4444',
+          border: '1px solid #ff4444'
+        }
+      });
+
+      // 3. Reset React state and redirect to home
+      onLogout(); 
+    } catch (err) {
+      console.error('Termination sequence failed:', err);
+      toast.error('System bypass failed. Manual clearance required.');
+    }
   };
 
   return (
@@ -55,7 +79,9 @@ const Dashboard = ({ user, setUser, onLogout }) => {
         <Button onClick={isMfaEnabled ? disableMFA : enableMFA} variant={isMfaEnabled ? "danger" : "primary"} disabled={loading}>
           {isMfaEnabled ? <FaUnlock /> : <FaQrcode />} {loading ? 'PROCESSING...' : (isMfaEnabled ? 'DEACTIVATE MFA' : 'ACTIVATE MFA')}
         </Button>
-        <Button onClick={handleLogout} variant="secondary"><FaPowerOff /> TERMINATE SESSION</Button>
+        <Button onClick={handleLogout} variant="secondary">
+          <FaPowerOff /> TERMINATE SESSION
+        </Button>
       </div>
     </Card>
   );

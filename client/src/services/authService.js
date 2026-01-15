@@ -12,11 +12,10 @@ const authService = {
 
   /**
    * Session Persistence
-   * Retrieves the current user profile by checking both Persistent (Local) 
-   * and Temporary (Session) storage for a valid token.
+   * Retrieves the current user profile by checking for valid session credentials.
    */
   getCurrentUser: async () => {
-    // Check for token in both storage tiers to support "Remember Me" logic
+    // For Level 2 (JWT), we check storage tiers; Level 1 uses HttpOnly cookies automatically via axios
     const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
     
     const config = token 
@@ -27,13 +26,27 @@ const authService = {
     return response.data;
   },
 
+  /**
+   * Terminate Session
+   * Triggers backend to clear HttpOnly cookies and prepares for client-side state cleanup.
+   */
+  logout: async () => {
+    const response = await axios.post('/auth/logout');
+    
+    // Clear Level 2 local tokens if present
+    localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_token');
+    
+    return response.data;
+  },
+
   // ==========================================
   // 1. AUTHENTICATION STRATEGIES
   // ==========================================
 
   /**
    * LEVEL 1: Legacy Authentication (Cookie-Based)
-   * Sends data as URL-encoded form parameters.
+   * Sends data as URL-encoded form parameters to simulate older systems.
    */
   loginLevel1: async (formData) => {
     const response = await axios.post('/auth/level1', formData);
@@ -42,7 +55,7 @@ const authService = {
 
   /**
    * LEVEL 2: Modern Authentication (Token-Based)
-   * Sends data as JSON payload.
+   * Sends data as JSON payload for stateless JWT authentication.
    */
   loginLevel2: async (data) => {
     const response = await axios.post('/auth/level2', data);
@@ -74,7 +87,6 @@ const authService = {
 
   /**
    * Admin Gateway Authentication
-   * Authenticates against hardcoded lab credentials.
    */
   loginAdmin: async (credentials) => {
     const response = await axios.post('/auth/admin/login', credentials);
@@ -98,7 +110,7 @@ const authService = {
   },
 
   /**
-   * Permanent termination of a user account.
+   * Permanent deletion of a user account.
    */
   deleteUser: async (userId) => {
     const response = await axios.delete(`/auth/admin/users/${userId}`);
