@@ -15,7 +15,7 @@ To get the lab up and running, you need to set up the database first, then launc
 Before running the code, create the environment for your data:
 
 1. **Create Database:** Use your PostgreSQL terminal to create a database named `phishing_lab_db`.
-2. **Run Schema:** Execute the SQL commands found in the **Database Setup** section of the [Backend README](./backend/README.md) to create the `users` table.
+2. **Run Schema:** Execute the SQL commands found in the **Database Setup** section of the [Backend README](./backend/README.MD) to create the `users` table.
 3. **Add Admin:** Insert a default user so you can log in immediately:
 `INSERT INTO users (email, password, name) VALUES ('admin@lab.com', 'password123', 'White Hat Hacker');`
 
@@ -23,7 +23,7 @@ Before running the code, create the environment for your data:
 
 1. Navigate to the `/backend` folder: `cd backend`.
 2. Install dependencies: `npm install`.
-3. Configure your environment: Create a `.env` file with your database credentials (check [Backend README](./backend/README.md) for the template).
+3. Configure your environment: Create a `.env` file with your database credentials (check [Backend README](./backend/README.MD) for the template).
 4. Launch: `npm run dev`.
 
 ### 3. Client Setup
