@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const pool = require('../config/db');
-const { generateToken } = require('../utils/helpers');
+const { generateToken, revokeSession } = require('../utils/helpers');
 
 /**
  * Level 1 Login: Legacy/Cookie Approach
@@ -28,7 +28,7 @@ exports.loginLevel1 = async (req, res) => {
     // 3. Normalize rememberMe value to boolean
     const isRemembered = rememberMe === 'true' || rememberMe === true;
 
-    // 4. Generate authentication token
+    // 4. Generate authentication token using central helper
     const token = generateToken(user, isRemembered);
 
     // 5. Handle Multi-Factor Authentication (MFA) if enabled
@@ -43,16 +43,16 @@ exports.loginLevel1 = async (req, res) => {
     const oneYear = 365 * 24 * 60 * 60 * 1000;
     const oneHour = 60 * 60 * 1000;
     
-    // 7. Set secure HttpOnly cookie
+    // 7. Set secure HttpOnly cookie to mitigate XSS
     res.cookie('session_id', token, {
-      httpOnly: true, // Mitigates XSS by hiding cookie from JavaScript
+      httpOnly: true, 
       secure: process.env.NODE_ENV === 'production', 
       sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
       maxAge: isRemembered ? oneYear : oneHour,
-      path: '/' // Must match the logout path for successful deletion
+      path: '/' 
     });
 
-    // 8. Send success response with non-sensitive user profile
+    // 8. Send success response with profile data
     res.json({ 
       success: true, 
       user: { id: user.id, name: user.name, email: user.email, mfa_secret: user.mfa_secret } 
@@ -65,22 +65,32 @@ exports.loginLevel1 = async (req, res) => {
 };
 
 /**
- * Terminate Session (Logout)
- * Clears the session_id cookie from the browser.
+ * Universal Logout (Covers Level 1 & Level 2)
+ * Utilizes the centralized revokeSession helper to blacklist tokens.
  */
 exports.logout = async (req, res) => {
   try {
-    // Instructs browser to delete the cookie by setting an expired date
+    // 1. Capture token from either Cookie or Authorization Header
+    const token = req.cookies.session_id || req.headers.authorization?.split(' ')[1];
+
+    // 2. Use the centralized helper to revoke the session in DB
+    // This protects against Replay Attacks by ensuring the token cannot be reused.
+    await revokeSession(token);
+
+    // 3. Instructs browser to delete the Level 1 cookie
     res.clearCookie('session_id', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      path: '/' // Must match the path used during cookie creation
+      path: '/' 
     });
 
-    res.json({ success: true, message: 'Session terminated and cookie cleared' });
+    res.json({ 
+      success: true, 
+      message: 'Session globally revoked and local state cleared.' 
+    });
   } catch (err) {
     console.error('Logout Error:', err);
-    res.status(500).json({ message: 'Failed to terminate session' });
+    res.status(500).json({ message: 'Failed to fully terminate session' });
   }
 };

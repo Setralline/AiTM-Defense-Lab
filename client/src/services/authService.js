@@ -1,23 +1,25 @@
 import axios from '../api/axios';
 
 /**
- * Centralized Authentication & Admin Service.
- * Manages hybrid session persistence and administrative gateway operations.
+ * Centralized Authentication & Administrative Service.
+ * This service orchestrates hybrid session management, multi-tier login strategies,
+ * and server-side session revocation for the Phishing Security Lab.
  */
 const authService = {
   
-  // ==========================================
-  // 0. SESSION MANAGEMENT
-  // ==========================================
+  // =========================================================================
+  // 0. SESSION LIFECYCLE MANAGEMENT
+  // =========================================================================
 
   /**
-   * Session Persistence
-   * Retrieves the current user profile by checking for valid session credentials.
+   * Retrieves the current user profile.
+   * Cross-references local JWT storage for Level 2 and relies on HttpOnly cookies 
+   * for Level 1 persistence.
    */
   getCurrentUser: async () => {
-    // For Level 2 (JWT), we check storage tiers; Level 1 uses HttpOnly cookies automatically via axios
     const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
     
+    // Level 2 requires explicit Authorization header, Level 1 uses automated cookie-drift.
     const config = token 
       ? { headers: { Authorization: `Bearer ${token}` } } 
       : {};
@@ -27,44 +29,63 @@ const authService = {
   },
 
   /**
-   * Terminate Session
-   * Triggers backend to clear HttpOnly cookies and prepares for client-side state cleanup.
+   * Synchronized Session Termination (Active Revocation).
+   * Notifies the backend to blacklist the current JWT/Cookie before 
+   * performing a full client-side state cleanup.
    */
   logout: async () => {
-    const response = await axios.post('/auth/logout');
-    
-    // Clear Level 2 local tokens if present
-    localStorage.removeItem('auth_token');
-    sessionStorage.removeItem('auth_token');
-    
-    return response.data;
+    try {
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+      // Signals the server to record the session ID in the revocation list.
+      await axios.post('/auth/logout', {}, config);
+    } catch (err) {
+      console.warn('Backend revocation unreachable, proceeding with client cleanup:', err.message);
+    } finally {
+      // Purge tokens and force redirect to reset the application state.
+      localStorage.removeItem('auth_token');
+      sessionStorage.removeItem('auth_token');
+      window.location.href = '/login';
+    }
   },
 
-  // ==========================================
-  // 1. AUTHENTICATION STRATEGIES
-  // ==========================================
+  // =========================================================================
+  // 1. AUTHENTICATION STRATEGIES (Hybrid Tiers)
+  // =========================================================================
 
   /**
-   * LEVEL 1: Legacy Authentication (Cookie-Based)
-   * Sends data as URL-encoded form parameters to simulate older systems.
+   * LEVEL 1: Legacy Authentication (Simulated Form Submission).
+   * FIXED: Enforces 'x-www-form-urlencoded' to prevent JSON parsing conflicts 
+   * on the server-side middleware stack.
    */
   loginLevel1: async (formData) => {
-    const response = await axios.post('/auth/level1', formData);
+    const response = await axios.post('/auth/level1', formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
     return response.data;
   },
 
   /**
-   * LEVEL 2: Modern Authentication (Token-Based)
-   * Sends data as JSON payload for stateless JWT authentication.
+   * LEVEL 2: Modern Authentication (Stateless JWT Approach).
+   * Manages JWT issuance and conditional persistence based on user preference.
    */
   loginLevel2: async (data) => {
     const response = await axios.post('/auth/level2', data);
+    
+    if (response.data.success && response.data.token) {
+        const storage = data.rememberMe ? localStorage : sessionStorage;
+        storage.setItem('auth_token', response.data.token);
+    }
+    
     return response.data;
   },
 
-  // ==========================================
-  // 2. MULTI-FACTOR AUTHENTICATION
-  // ==========================================
+  // =========================================================================
+  // 2. MULTI-FACTOR AUTHENTICATION (MFA)
+  // =========================================================================
 
   verifyMfa: async (data) => {
     const response = await axios.post('/auth/mfa/verify', data);
@@ -88,7 +109,7 @@ const authService = {
   /**
    * Admin Gateway Authentication
    */
-  loginAdmin: async (credentials) => {
+    loginAdmin: async (credentials) => {
     const response = await axios.post('/auth/admin/login', credentials);
     return response.data;
   },

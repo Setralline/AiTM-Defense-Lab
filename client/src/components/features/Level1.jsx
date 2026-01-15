@@ -14,14 +14,22 @@ const Level1 = ({ user, setUser }) => {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [tempToken, setTempToken] = useState('');
-  const [formData, setFormData] = useState({ email: '', password: '', code: '', rememberMe: false });
+  const [formData, setFormData] = useState({ 
+    email: '', 
+    password: '', 
+    code: '', 
+    rememberMe: false 
+  });
 
+  // Effect to sync session on mount
   useEffect(() => {
     const checkSession = async () => {
       try {
         const data = await authService.getCurrentUser();
         if (data.user) setUser(data.user);
-      } catch (err) { /* Silent */ }
+      } catch (err) {
+        // Fail silently as user might not be logged in
+      }
     };
     checkSession();
   }, [setUser]);
@@ -34,16 +42,18 @@ const Level1 = ({ user, setUser }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    const tId = toast.loading(step === 1 ? 'Verifying...' : 'Validating token...');
+    const tId = toast.loading(step === 1 ? 'Verifying Identity...' : 'Validating MFA...');
 
     try {
       if (step === 1) {
+        // Use URLSearchParams for Level 1 to simulate legacy form submission
         const params = new URLSearchParams();
         params.append('email', formData.email.trim());
         params.append('password', formData.password);
         params.append('rememberMe', formData.rememberMe);
 
         const res = await authService.loginLevel1(params);
+        
         if (res.mfa_required) {
           setTempToken(res.temp_token);
           setStep(2);
@@ -52,29 +62,57 @@ const Level1 = ({ user, setUser }) => {
           finalizeLogin(res, tId);
         }
       } else {
-        const res = await authService.verifyMfa({ email: formData.email.trim(), code: formData.code.trim(), temp_token: tempToken });
+        // Verify MFA token
+        const res = await authService.verifyMfa({ 
+          email: formData.email.trim(), 
+          code: formData.code.trim(), 
+          temp_token: tempToken 
+        });
+        
         if (res.success) finalizeLogin(res, tId);
       }
     } catch (err) {
-      toast.error('Access Denied.', { id: tId });
-    } finally { setIsLoading(false); }
+      toast.error(err.response?.data?.message || 'Access Denied.', { id: tId });
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
+  /**
+   * Finalizes the login sequence by updating the application state
+   * and ensuring tokens are stored correctly.
+   */
   const finalizeLogin = (res, tId) => {
     const storage = formData.rememberMe ? localStorage : sessionStorage;
+    
+    // Store token if provided (Modern JWT path)
     if (res.token) storage.setItem('auth_token', res.token);
+    
     setUser(res.user);
     toast.success(`Welcome, ${res.user.name}`, { id: tId });
   };
 
-  const handleLogout = () => {
-    ['auth_token'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); });
-    setUser(null);
-    setStep(1);
-    toast('Logged out.', { icon: '🛡️' });
-    navigate('/level1');
+  /**
+   * Universal Logout Implementation
+   * Triggers active server-side revocation before clearing local state.
+   */
+  const handleLogout = async () => {
+    const tId = toast.loading('Terminating session...');
+    try {
+      // Call the centralized logout service to blacklist the session
+      await authService.logout();
+    } catch (err) {
+      console.error('Revocation failed, performing local cleanup.');
+    } finally {
+      // Ensure state is cleared regardless of network success
+      setUser(null);
+      setStep(1);
+      toast.success('Session Revoked & Terminated.', { id: tId, icon: '🛡️' });
+      navigate('/level1');
+    }
   };
 
+  // Render Dashboard if authenticated
   if (user) return <Dashboard user={user} setUser={setUser} onLogout={handleLogout} />;
 
   return (
@@ -82,22 +120,57 @@ const Level1 = ({ user, setUser }) => {
       <form onSubmit={handleSubmit}>
         {step === 1 ? (
           <>
-            <InputGroup icon={<FaUserAstronaut />} type="email" name="email" placeholder="Email" onChange={handleChange} required />
-            <InputGroup icon={<FaKey />} type="password" name="password" placeholder="Passcode" onChange={handleChange} required />
+            <InputGroup 
+              icon={<FaUserAstronaut />} 
+              type="email" 
+              name="email" 
+              placeholder="Email" 
+              onChange={handleChange} 
+              required 
+            />
+            <InputGroup 
+              icon={<FaKey />} 
+              type="password" 
+              name="password" 
+              placeholder="Passcode" 
+              onChange={handleChange} 
+              required 
+            />
             <div style={styles.checkboxContainer}>
-              <input type="checkbox" name="rememberMe" onChange={handleChange} checked={formData.rememberMe} style={{ marginRight: '8px', accentColor: 'var(--cyber-red)' }} />
+              <input 
+                type="checkbox" 
+                name="rememberMe" 
+                onChange={handleChange} 
+                checked={formData.rememberMe} 
+                style={{ marginRight: '8px', accentColor: 'var(--cyber-red)' }} 
+              />
               <label>Remember terminal</label>
             </div>
           </>
         ) : (
-          <InputGroup icon={<FaShieldAlt />} type="text" name="code" placeholder="6-Digit Token" onChange={handleChange} maxLength={6} highlight autoFocus />
+          <InputGroup 
+            icon={<FaShieldAlt />} 
+            type="text" 
+            name="code" 
+            placeholder="6-Digit Token" 
+            onChange={handleChange} 
+            maxLength={6} 
+            highlight 
+            autoFocus 
+          />
         )}
 
         <div style={styles.actions}>
           <Button type="submit" disabled={isLoading} fullWidth>
             {isLoading ? 'PROCESSING...' : (step === 1 ? 'INITIATE' : 'VERIFY')}
           </Button>
-          <Button type="button" variant="secondary" onClick={() => navigate('/')} fullWidth style={styles.returnBtn}>
+          <Button 
+            type="button" 
+            variant="secondary" 
+            onClick={() => navigate('/')} 
+            fullWidth 
+            style={styles.returnBtn}
+          >
             <FaArrowLeft /> RETURN TO BASE
           </Button>
         </div>

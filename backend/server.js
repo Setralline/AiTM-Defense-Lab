@@ -39,8 +39,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // 3. Body Parsers & Cookie Middleware
-app.use(express.json({ limit: '10kb' })); 
-app.use(express.urlencoded({ extended: true })); 
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10kb' }));        
 app.use(cookieParser()); // Enables reading and clearing HttpOnly cookies
 
 // 4. Global Rate Limiter - Prevents Brute Force attacks on the lab

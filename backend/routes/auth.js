@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 
-// Import controllers for various authentication levels and operations
+// Security middleware to intercept and block revoked tokens
+const checkBlacklist = require('../middleware/checkBlacklist');
+
+// Controller modules for different authentication tiers
 const authController = require('../controllers/authController');
 const level1Controller = require('../controllers/level1Controller');
 const level2Controller = require('../controllers/level2Controller');
@@ -12,57 +15,57 @@ const mfaController = require('../controllers/mfaController');
 // ==========================================
 
 /**
- * Check Current Identity
- * Validates the existing session for both Level 1 and Level 2.
+ * Identity Verification Route
+ * Crucial endpoint protected by checkBlacklist to prevent 
+ * attackers from using stolen or revoked session identifiers.
  */
-router.get('/me', authController.getCurrentUser);
+router.get('/me', checkBlacklist, authController.getCurrentUser);
 
 /**
- * Terminate Session (Logout)
- * Clears the HttpOnly session cookie for Level 1.
+ * Universal Logout Sequence
+ * Routes to level1Controller to clear HttpOnly cookies 
+ * and populate the database blacklist for JWT invalidation.
  */
 router.post('/logout', level1Controller.logout);
-
 
 // ==========================================
 // AUTHENTICATION STRATEGIES
 // ==========================================
 
 /**
- * Level 1: Legacy Authentication
- * Uses HttpOnly Cookies for session management.
+ * Tier 1: Legacy Cookie-Based Authentication
  */
 router.post('/level1', level1Controller.loginLevel1);
 
 /**
- * Level 2: Modern Authentication
- * Uses JWT Tokens for stateless authentication.
+ * Tier 2: Modern JWT-Based Authentication (JSON Payload)
  */
 router.post('/level2', level2Controller.loginLevel2);
-
 
 // ==========================================
 // MULTI-FACTOR AUTHENTICATION (MFA)
 // ==========================================
 
-router.post('/mfa/enable', mfaController.enableMFA);
-router.post('/mfa/verify', mfaController.verifyMfa);
-router.post('/mfa/disable', mfaController.disableMFA);
-
+/**
+ * MFA Management Operations
+ * Protected by blacklist checks to ensure operations are 
+ * performed within a trusted, non-revoked session.
+ */
+router.post('/mfa/enable', checkBlacklist, mfaController.enableMFA);
+router.post('/mfa/verify', checkBlacklist, mfaController.verifyMfa);
+router.post('/mfa/disable', checkBlacklist, mfaController.disableMFA);
 
 // ==========================================
-// ADMINISTRATIVE OPERATIONS (NEW)
+// ADMINISTRATIVE OPERATIONS
 // ==========================================
 
 /**
- * Operative Management
- * These routes allow provisioning and termination of lab users.
+ * Laboratory Administration Gateway
+ * Ensures all admin-level queries are verified against the revocation list.
  */
-
-router.post('/admin/login', authController.adminLogin);      // Admin Authentication Route
-router.get('/admin/users', authController.listUsers);        // Fetch all users
-router.post('/admin/users', authController.createUser);      // Create a new user
-router.delete('/admin/users/:id', authController.deleteUser); // Delete user by ID
-
+router.post('/admin/login', authController.adminLogin);
+router.get('/admin/users', checkBlacklist, authController.listUsers);
+router.post('/admin/users', checkBlacklist, authController.createUser);
+router.delete('/admin/users/:id', checkBlacklist, authController.deleteUser);
 
 module.exports = router;

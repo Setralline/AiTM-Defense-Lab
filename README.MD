@@ -19,15 +19,15 @@ To get the lab up and running, you need to set up the database first, then launc
 Before running the code, create the environment for your data:
 
 1. **Create Database:** Use your PostgreSQL terminal to create a database named `phishing_lab_db`.
-2. **Run Schema:** Execute the SQL commands found in the **Database Setup** section of the [Backend README](./backend/README.MD) to create the `users` table.
-3. **Add Admin:** Insert a default user so you can log in immediately:
+2. **Run Schema:** Create the necessary tables including `users` and `token_blacklist`.
+3. **Add Admin:** Insert a default user for immediate access:
 `INSERT INTO users (email, password, name) VALUES ('admin@lab.com', 'password123', 'White Hat Hacker');`
 
 ### 2. Backend Setup
 
 1. Navigate to the `/backend` folder: `cd backend`.
 2. Install dependencies: `npm install`.
-3. Configure your environment: Create a `.env` file with your database credentials (check [Backend README](./backend/README.MD) for the template).
+3. Configure your environment: Create a `.env` file with your database credentials.
 4. Launch: `npm run dev`.
 
 ### 3. Client Setup
@@ -41,34 +41,31 @@ Before running the code, create the environment for your data:
 
 ## Project Structure
 
-This laboratory is split into two main sections for better organization:
+This laboratory is split into two main sections:
 
-* **[Backend API](./backend/README.MD):** Built with Node.js and Express. It manages secure sessions, JWT tokens, and the MFA (TOTP) logic.
-* **[Client Interface](./client/README.MD):** A modern React 19 dashboard that acts as the "victim" application, featuring real-time security updates and mission-based levels.
+* **[Backend API](./backend/README.MD):** Built with Node.js/Express. Manages secure sessions, JWT generation, and the server-side revocation logic.
+* **[Client Interface](./client/README.MD):** A modern React 19 dashboard that acts as the "victim" application, featuring real-time security state management.
 
 ---
 
 ## Lab Missions
 
-Once the project is running, you can test the following:
-
-* **Level 1 (Cookies):** Simulates legacy authentication using HttpOnly cookies.
-* **Level 2 (Tokens):** Simulates modern SPA authentication using JWT.
-* **MFA Module:** Enable Multi-Factor Authentication in the dashboard to test how TOTP adds a layer of defense against session hijacking.
+* **Level 1 (Legacy/Cookies):** Simulates legacy authentication using `application/x-www-form-urlencoded` payloads and HttpOnly cookies.
+* **Level 2 (Modern/Tokens):** Simulates modern SPA authentication using `application/json` payloads and JWT tokens stored in LocalStorage.
+* **MFA Module:** Analyzes how TOTP adds a critical layer of defense against real-time session hijacking.
 
 ---
 
 ## Key Security Features
 
-* **Session Termination:** Implements `res.clearCookie` with `HttpOnly` attributes to ensure session identifiers are purged from the browser upon logout, preventing replay attacks.
-* **Hybrid Auth Research:** A comparative environment to study the vulnerability differences between **Cookie-based (Level 1)** and **Token-based (Level 2)** authentication in reverse-proxy scenarios.
-* **MFA Defense:** Integrated TOTP logic to analyze how multi-factor authentication acts as a secondary barrier against session hijacking.
+* **Active Session Revocation (Blacklisting):** Implements a centralized server-side blacklist for both JWTs and Cookies. This ensures that session termination is absolute, neutralizing stolen tokens even before their expiration.
+* **Hybrid Protocol Support:** Successfully handles diverse data streams (URL-encoded vs JSON) to simulate heterogeneous corporate environments and test middleware resilience.
+* **HttpOnly Session Protection:** Level 1 utilizes strict cookie attributes to mitigate XSS-based session theft, isolating the research focus to AiTM/Proxy-based attacks.
+* **Synchronized Termination Logic:** A robust "Terminate Session" protocol that purges client-side storage while simultaneously revoking the session identifier on the server.
 
 ---
 
 ## Future Roadmap
-
-This lab is designed to be extensible. We plan to add more modules in the future covering:
 
 * **Evilginx & Proxy Fingerprinting:** Detecting reverse proxies via header analysis.
 * **HTTP Header Security:** Identifying unauthorized `X-Forwarded-For` patterns.
@@ -85,4 +82,3 @@ This software is strictly for **educational and research purposes**. It was deve
 ### Tags
 
 `cybersecurity` `phishing-simulation` `aitm-defense` `mfa-bypass` `evilginx-analysis` `react19` `node-js` `master-thesis`
-
