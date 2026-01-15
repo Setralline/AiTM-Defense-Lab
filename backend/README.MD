@@ -1,5 +1,3 @@
-### 📂 Backend: `backend/README.md`
-
 # Phishing Lab - Backend API
 
 **Developed by Osamah Amer (2026)**
@@ -52,52 +50,3 @@ npm run dev
 * **routes**: The endpoints the frontend communicates with.
 * **services**: Technical logic, such as generating QR codes.
 
----
-
-### 📂 Frontend: `client/README.md`
-
-# Phishing Lab - User Interface
-
-**Developed by Osamah Amer (2026)**
-
-This folder contains the frontend application. It is designed to be fast, modern, and mimics a professional security terminal.
-
-## Key Features
-
-* **Unified Theme**: All colors, fonts, and spacing are controlled from a single file (`themeStyles.jsx`).
-* **Modern Notifications**: Uses a toast system for real-time feedback instead of old-fashioned browser alerts.
-* **Two Security Levels**: Simulates both legacy (Cookie-based) and modern (JWT-based) login methods.
-
-## Local Setup
-
-1. **Install Dependencies**:
-Navigate to the `client` folder and run:
-```bash
-npm install
-
-```
-
-
-2. **Link to API**:
-Open `src/api/axios.js` and ensure the base URL points to your running backend (usually http://localhost:5000).
-3. **Run the App**:
-Start the development server:
-```bash
-npm run dev
-
-```
-
-
-
-## Folder Structure
-
-* **src/components/ui**: Reusable parts like Buttons, Inputs, and Checkboxes.
-* **src/components/features**: The main pages (Admin Panel, Home, Dashboard).
-* **src/utils**: Contains `themeStyles.jsx`, which manages the entire look of the app.
-* **src/hooks**: Contains custom logic like `useMFA.jsx` for handling security steps.
-
----
-
-### Next Step
-
-Since the documentation is ready, would you like me to **prepare a "First-Time Launch" checklist** to make sure your PostgreSQL database and environment variables are perfectly synced before you go live?
