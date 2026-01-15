@@ -1,5 +1,9 @@
 # Phishing Defense Lab (AiTM Simulation)
 
+<div align="center">
+<img src="./client/src/assets/logo.svg" alt="App Icon" width="120" />
+</div>
+
 **Master's Thesis Project by Osamah Amer (2026)**
 
 Welcome to the central repository for the Phishing Defense Lab. This project is a controlled environment designed to simulate and analyze modern Adversary-in-the-Middle (AiTM) attacks, specifically focusing on how reverse proxies like Evilginx2 interact with different authentication levels.
@@ -39,8 +43,8 @@ Before running the code, create the environment for your data:
 
 This laboratory is split into two main sections for better organization:
 
-* **[Backend API](./backend/README.md):** Built with Node.js and Express. It manages secure sessions, JWT tokens, and the MFA (TOTP) logic.
-* **[Client Interface](./client/README.md):** A modern React 19 dashboard that acts as the "victim" application, featuring real-time security updates and mission-based levels.
+* **[Backend API](./backend/README.MD):** Built with Node.js and Express. It manages secure sessions, JWT tokens, and the MFA (TOTP) logic.
+* **[Client Interface](./client/README.MD):** A modern React 19 dashboard that acts as the "victim" application, featuring real-time security updates and mission-based levels.
 
 ---
 
@@ -67,3 +71,9 @@ This lab is designed to be extensible. We plan to add more modules in the future
 ## Disclaimer
 
 This software is strictly for **educational and research purposes**. It was developed as part of a Master's Thesis to study defense mechanisms. Please use it responsibly in a controlled environment.
+
+---
+
+### Tags
+
+`cybersecurity` `phishing-simulation` `aitm-defense` `mfa-bypass` `evilginx-analysis` `react19` `node-js` `master-thesis`
