@@ -9,11 +9,17 @@ import Button from '../ui/Button';
 import Dashboard from './Dashboard';
 import { cyberStyles as styles } from '../../utils/themeStyles';
 
+/**
+ * Level 1 Component: Legacy Authentication Simulation
+ * Simulates a traditional web application environment using Cookies and Form Data.
+ */
 const Level1 = ({ user, setUser }) => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  
+  // State Management
+  const [step, setStep] = useState(1); // 1: Credentials, 2: MFA
   const [isLoading, setIsLoading] = useState(false);
-  const [tempToken, setTempToken] = useState('');
+  const [tempToken, setTempToken] = useState(''); // Temporary token for MFA challenge
   const [formData, setFormData] = useState({ 
     email: '', 
     password: '', 
@@ -21,24 +27,27 @@ const Level1 = ({ user, setUser }) => {
     rememberMe: false 
   });
 
-  // Effect to sync session on mount
+  // 1. Session Synchronization on Mount
+  // Checks if the user is already authenticated via an HttpOnly cookie.
   useEffect(() => {
     const checkSession = async () => {
       try {
         const data = await authService.getCurrentUser();
         if (data.user) setUser(data.user);
       } catch (err) {
-        // Fail silently as user might not be logged in
+        // Silent failure is expected if no session exists.
       }
     };
     checkSession();
   }, [setUser]);
 
+  // 2. Form Input Handler
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
   };
 
+  // 3. Authentication Logic
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -46,7 +55,8 @@ const Level1 = ({ user, setUser }) => {
 
     try {
       if (step === 1) {
-        // Use URLSearchParams for Level 1 to simulate legacy form submission
+        // CRITICAL: Construct URLSearchParams to match 'application/x-www-form-urlencoded' header
+        // This simulates a legacy HTML form submission.
         const params = new URLSearchParams();
         params.append('email', formData.email.trim());
         params.append('password', formData.password);
@@ -54,6 +64,7 @@ const Level1 = ({ user, setUser }) => {
 
         const res = await authService.loginLevel1(params);
         
+        // Handle MFA Challenge
         if (res.mfa_required) {
           setTempToken(res.temp_token);
           setStep(2);
@@ -62,7 +73,7 @@ const Level1 = ({ user, setUser }) => {
           finalizeLogin(res, tId);
         }
       } else {
-        // Verify MFA token
+        // MFA Verification Phase
         const res = await authService.verifyMfa({ 
           email: formData.email.trim(), 
           code: formData.code.trim(), 
@@ -72,39 +83,30 @@ const Level1 = ({ user, setUser }) => {
         if (res.success) finalizeLogin(res, tId);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Access Denied.', { id: tId });
+      // Use the sanitized error message from our Axios interceptor
+      toast.error(err.sanitizedMessage || 'Access Denied.', { id: tId });
     } finally { 
       setIsLoading(false); 
     }
   };
 
-  /**
-   * Finalizes the login sequence by updating the application state
-   * and ensuring tokens are stored correctly.
-   */
+  // 4. State Finalization
   const finalizeLogin = (res, tId) => {
-    const storage = formData.rememberMe ? localStorage : sessionStorage;
-    
-    // Store token if provided (Modern JWT path)
-    if (res.token) storage.setItem('auth_token', res.token);
-    
+    // Level 1 relies on cookies, but we store user metadata for the UI
     setUser(res.user);
     toast.success(`Welcome, ${res.user.name}`, { id: tId });
   };
 
-  /**
-   * Universal Logout Implementation
-   * Triggers active server-side revocation before clearing local state.
-   */
+  // 5. Secure Logout Handler
   const handleLogout = async () => {
     const tId = toast.loading('Terminating session...');
     try {
-      // Call the centralized logout service to blacklist the session
+      // Trigger Active Revocation (Blacklisting)
       await authService.logout();
     } catch (err) {
-      console.error('Revocation failed, performing local cleanup.');
+      console.error('Logout failed:', err);
     } finally {
-      // Ensure state is cleared regardless of network success
+      // Force UI cleanup
       setUser(null);
       setStep(1);
       toast.success('Session Revoked & Terminated.', { id: tId, icon: '🛡️' });

@@ -1,25 +1,34 @@
 import axios from '../api/axios';
 
 /**
- * Centralized Authentication & Administrative Service.
- * This service orchestrates hybrid session management, multi-tier login strategies,
- * and server-side session revocation for the Phishing Security Lab.
+ * ------------------------------------------------------------------
+ * AUTHENTICATION SERVICE LAYER
+ * ------------------------------------------------------------------
+ * This service acts as the orchestration engine for the Phishing Defense Lab.
+ * It manages the complex "Hybrid Architecture" by bridging:
+ * 1. Legacy Cookie-based Authentication (Level 1)
+ * 2. Modern Token-based Authentication (Level 2)
+ * 3. Active Session Revocation & Admin Operations
  */
+
 const authService = {
-  
+
   // =========================================================================
-  // 0. SESSION LIFECYCLE MANAGEMENT
+  // 0. SESSION LIFECYCLE & STATE MANAGEMENT
   // =========================================================================
 
   /**
-   * Retrieves the current user profile.
-   * Cross-references local JWT storage for Level 2 and relies on HttpOnly cookies 
-   * for Level 1 persistence.
+   * Retrieves the current user's profile to validate session integrity.
+   * * Strategy:
+   * - Checks for JWT in local storage (Level 2).
+   * - Relies on automated browser cookie transmission for Level 1.
    */
   getCurrentUser: async () => {
     const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
     
-    // Level 2 requires explicit Authorization header, Level 1 uses automated cookie-drift.
+    // Conditional Header Injection:
+    // Only attach 'Authorization' header if a token exists (Level 2).
+    // Level 1 requests will automatically carry the HttpOnly cookie.
     const config = token 
       ? { headers: { Authorization: `Bearer ${token}` } } 
       : {};
@@ -29,23 +38,27 @@ const authService = {
   },
 
   /**
-   * Synchronized Session Termination (Active Revocation).
-   * Notifies the backend to blacklist the current JWT/Cookie before 
-   * performing a full client-side state cleanup.
+   * Active Session Revocation (The Kill Switch).
+   * * Security Protocol:
+   * 1. Attempts to notify the backend to blacklist the session (Server-side revocation).
+   * 2. GUARANTEES client-side cleanup via the 'finally' block, ensuring the user 
+   * is logged out locally even if the network fails.
    */
   logout: async () => {
     try {
       const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
       const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
-      // Signals the server to record the session ID in the revocation list.
+      // Trigger server-side blacklisting
       await axios.post('/auth/logout', {}, config);
     } catch (err) {
-      console.warn('Backend revocation unreachable, proceeding with client cleanup:', err.message);
+      console.warn('[Security] Backend revocation unreachable. Proceeding with local purge.', err.message);
     } finally {
-      // Purge tokens and force redirect to reset the application state.
+      // Mandatory State Cleanup (Defense in Depth)
       localStorage.removeItem('auth_token');
       sessionStorage.removeItem('auth_token');
+      
+      // Hard Redirect to ensure clean application state
       window.location.href = '/login';
     }
   },
@@ -55,26 +68,32 @@ const authService = {
   // =========================================================================
 
   /**
-   * LEVEL 1: Legacy Authentication (Simulated Form Submission).
-   * FIXED: Enforces 'x-www-form-urlencoded' to prevent JSON parsing conflicts 
-   * on the server-side middleware stack.
+   * LEVEL 1: Legacy Simulation (Cookie/Form-Based).
+   * * Technical Note:
+   * We explicitly override the Content-Type to 'application/x-www-form-urlencoded'.
+   * This prevents the server's JSON parser from crashing and accurately simulates
+   * legacy web traffic patterns.
    */
   loginLevel1: async (formData) => {
+    // formData is expected to be a URLSearchParams object here
     const response = await axios.post('/auth/level1', formData, {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'Content-Type': 'application/x-www-form-urlencoded' 
       }
     });
     return response.data;
   },
 
   /**
-   * LEVEL 2: Modern Authentication (Stateless JWT Approach).
-   * Manages JWT issuance and conditional persistence based on user preference.
+   * LEVEL 2: Modern Simulation (JWT/Stateless).
+   * * Technical Note:
+   * Handles the reception of the JWT and persists it in client storage.
+   * This simulates the vulnerability of tokens to XSS if not handled correctly.
    */
   loginLevel2: async (data) => {
     const response = await axios.post('/auth/level2', data);
     
+    // Persist token based on "Remember Me" preference
     if (response.data.success && response.data.token) {
         const storage = data.rememberMe ? localStorage : sessionStorage;
         storage.setItem('auth_token', response.data.token);
@@ -102,14 +121,11 @@ const authService = {
     return response.data;
   },
 
-  // ==========================================
-  // 3. ADMINISTRATIVE OPERATIONS
-  // ==========================================
+  // =========================================================================
+  // 3. ADMINISTRATIVE GATEWAY
+  // =========================================================================
 
-  /**
-   * Admin Gateway Authentication
-   */
-    loginAdmin: async (credentials) => {
+  loginAdmin: async (credentials) => {
     const response = await axios.post('/auth/admin/login', credentials);
     return response.data;
   },
@@ -122,7 +138,7 @@ const authService = {
     return response.data;
   },
 
-  /**
+   /**
    * Provision a new operative account with secure hashing.
    */
   createUser: async (userData) => {
@@ -130,7 +146,7 @@ const authService = {
     return response.data;
   },
 
-  /**
+ /**
    * Permanent deletion of a user account.
    */
   deleteUser: async (userId) => {

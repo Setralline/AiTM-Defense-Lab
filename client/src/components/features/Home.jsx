@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'; // 1. استيراد هوك التنقل
 import { FaCookieBite, FaShieldVirus, FaSkullCrossbones } from 'react-icons/fa';
 import Card from '../layout/Card';
 import Button from '../ui/Button';
@@ -8,8 +8,11 @@ import { cyberStyles as styles } from '../../utils/themeStyles';
 /**
  * Home Component
  * Entry point for the simulation: Mission selection.
+ * REFACTORED: Uses 'useNavigate' instead of Link wrapping Buttons to fix click events.
  */
 const Home = () => {
+  const navigate = useNavigate();
+
   return (
     <Card title="SELECT MISSION" footer="UNAUTHORIZED ACCESS PROHIBITED">
       <div style={styles.homeContainer}>
@@ -18,20 +21,28 @@ const Home = () => {
         </p>
         
         {/* Mission Level 1 */}
-        <Link to="/level1" style={{ textDecoration: 'none' }}>
-          <Button variant="primary" fullWidth>
-            <FaCookieBite style={styles.homeIcon} /> 
-            LEVEL 1: COOKIES (LEGACY)
-          </Button>
-        </Link>
+        {/* FIX: Removed <Link> wrapper, added onClick to Button */}
+        <Button 
+          variant="primary" 
+          fullWidth 
+          onClick={() => navigate('/level1')}
+        >
+          <FaCookieBite style={styles.homeIcon} /> 
+          LEVEL 1: COOKIES (LEGACY)
+        </Button>
+
+        {/* Spacer for visual separation */}
+        <div style={{ height: '1rem' }}></div>
 
         {/* Mission Level 2 */}
-        <Link to="/level2" style={{ textDecoration: 'none' }}>
-          <Button variant="secondary" fullWidth>
-            <FaShieldVirus style={styles.homeIcon} /> 
-            LEVEL 2: TOKENS (MODERN)
-          </Button>
-        </Link>
+        <Button 
+          variant="secondary" 
+          fullWidth 
+          onClick={() => navigate('/level2')}
+        >
+          <FaShieldVirus style={styles.homeIcon} /> 
+          LEVEL 2: TOKENS (MODERN)
+        </Button>
 
         {/* System Status Decorative Element */}
         <div style={styles.systemStatus}>
