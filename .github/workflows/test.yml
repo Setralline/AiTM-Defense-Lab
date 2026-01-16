@@ -7,15 +7,33 @@ on:
     branches: [ main ]
 
 jobs:
-  # JOB 1: Test Backend Integrity
+  # JOB 1: Test Backend Integrity (With Database Service)
   backend-test:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./backend
     
+    # === NEW: Spin up a temporary Postgres DB for testing ===
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: phishing_lab_db_test
+        ports:
+          - 5432:5432
+        # Health check to ensure DB is ready before running tests
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - uses: actions/checkout@v4
+    
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
@@ -25,6 +43,11 @@ jobs:
       run: npm ci
       
     - name: Run API Security Tests
+      # Pass the connection string to the running service container
+      env:
+        DATABASE_URL: postgres://test_user:test_password@localhost:5432/phishing_lab_db_test
+        JWT_SECRET: test_secret_key_123
+        NODE_ENV: test
       run: npm test
 
   # JOB 2: Test Frontend Interface (Playwright)
@@ -39,7 +62,7 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20' 
+        node-version: '20'
         
     - name: Install Dependencies
       run: npm ci

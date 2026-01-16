@@ -1,6 +1,20 @@
 const request = require('supertest');
 const app = require('../server');
 const pool = require('../config/db'); // Needed to close the connection after tests
+const { createInitialAdmin } = require('../config/initDb'); 
+
+describe('Authentication API Security Checks', () => {
+  
+  // 2. Setup: Create Tables & Seed Admin BEFORE tests run
+  beforeAll(async () => {
+    // This ensures the CI database has the 'users' table and the admin account
+    await createInitialAdmin();
+  });
+
+  // 3. Cleanup: Close DB connection AFTER tests finish
+  afterAll(async () => {
+    await pool.end();
+  });
 
 /**
  * Authentication API Security & Integration Tests
