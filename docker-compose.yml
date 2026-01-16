@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # Service 1: Database
+  db:
+    image: postgres:14-alpine
+    container_name: phishing_lab_db
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secure_password_123
+      POSTGRES_DB: phishing_lab_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - lab-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d phishing_lab_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Service 2: Backend API
+  backend:
+    build: ./backend
+    container_name: phishing_lab_backend
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 5000
+      # Note: 'db' is the service name defined above
+      DATABASE_URL: postgres://admin:secure_password_123@db:5432/phishing_lab_db
+      JWT_SECRET: super_secret_thesis_key_2026
+      NODE_ENV: production
+      # Allow frontend origin (Nginx serves on port 80)
+      CORS_ORIGIN: http://localhost
+    networks:
+      - lab-network
+
+  # Service 3: Frontend Client (Nginx)
+  client:
+    build: ./client
+    container_name: phishing_lab_client
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80" # Maps localhost:80 to container:80
+    networks:
+      - lab-network
+
+volumes:
+  postgres_data:
+
+networks:
+  lab-network:
+    driver: bridge

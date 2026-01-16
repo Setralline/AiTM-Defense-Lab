@@ -9,9 +9,11 @@ import axios from 'axios';
  */
 
 // 1. Environment-Aware Base URL
-// Ensures seamless switching between Development (Localhost) and Production.
+// UPDATED:
+// - Development (npm run dev): Connects directly to backend port 5000.
+// - Production (Docker/Nginx): Uses relative path ('') so Nginx proxies the request.
 const BASE_URL = import.meta.env.MODE === 'production' 
-  ? 'https://your-production-api.com'
+  ? '' // Empty string = Relative path (e.g., /auth/login)
   : 'http://localhost:5000';
 
 /**

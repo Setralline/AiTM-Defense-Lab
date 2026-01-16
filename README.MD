@@ -8,18 +8,77 @@
 
 Welcome to the central repository for the Phishing Defense Lab. This project is a controlled environment designed to simulate and analyze modern **Adversary-in-the-Middle (AiTM)** attacks, specifically focusing on how reverse proxies like Evilginx2 interact with different authentication levels.
 
+---
 
+## Deployment via Docker (Recommended)
+
+This project is fully containerized to ensure consistency across development and production environments. Using **Docker Compose**, you can spin up the Frontend (React/Nginx), Backend (Node.js), and Database (PostgreSQL) with a single command.
+
+### Prerequisites
+* [Docker Desktop](https://www.docker.com/products/docker-desktop) installed and running.
+
+### 1. Run Locally (Development & Testing)
+This will build the images and start the services on a unified network. Nginx will serve the application on port `80`, proxying API requests to the backend automatically.
+
+```bash
+# Start all services in detached mode
+docker-compose up --build -d
+
+# View logs (optional)
+docker-compose logs -f
+
+```
+
+> **Access the Lab:** Open your browser and navigate to `http://localhost`
+
+### 2. Run in Production (Cloud/VPS)
+
+The setup remains the same. However, ensure you define the correct origin in your environment variables if you are deploying to a specific domain.
+
+```bash
+# Example: Setting the origin for a cloud server
+CORS_ORIGIN=[https://your-lab-domain.com](https://your-lab-domain.com) docker-compose up --build -d
+
+```
+
+### 3. Stop the Environment
+
+To stop all containers and remove the network:
+
+```bash
+docker-compose down
+
+```
 
 ---
 
-## Deployment & Installation
+## Automated Testing & QA
 
-This project is modular. For detailed installation, database schema configuration, and environment setup, please refer to the specific documentation located in each module:
+This project maintains rigorous quality standards using a CI/CD pipeline (GitHub Actions). You can also run these tests locally to verify system integrity.
 
-* **Backend & Database:** [Read Backend Documentation](./backend/README.MD)
-    * *Covers: Node.js API setup, PostgreSQL schema, and environment variables.*
-* **Client Interface:** [Read Client Documentation](./client/README.MD)
-    * *Covers: React 19 setup, dependencies, and development server.*
+### Backend Security Tests (Jest & Supertest)
+
+Validates the API endpoints, authentication logic (Level 1 vs Level 2), and database interactions.
+
+```bash
+cd backend
+npm test
+
+```
+
+### Client E2E Tests (Playwright)
+
+Simulates a real user navigating through the application. It verifies that critical attack surfaces (Login Forms, Dashboard) are rendered correctly.
+
+```bash
+cd client
+# Install browsers (first time only)
+npx playwright install
+
+# Run the navigation tests
+npx playwright test
+
+```
 
 ---
 
@@ -60,7 +119,3 @@ This laboratory is architected into two distinct tiers:
 
 This software is developed strictly for **educational and research purposes** as part of a Master's Thesis. It contains intentional configurations to simulate vulnerabilities. Please use it responsibly within a controlled, isolated environment.
 
----
-
-### Tags
-`cybersecurity` `phishing-simulation` `aitm-defense` `mfa-bypass` `evilginx-analysis` `react19` `node-js` `master-thesis`

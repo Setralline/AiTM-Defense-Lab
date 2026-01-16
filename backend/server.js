@@ -19,21 +19,27 @@ const app = express();
 app.use(helmet());
 
 // 2. Cross-Origin Resource Sharing (CORS) Configuration
-// Must allow credentials for HttpOnly cookies to work between frontend and backend
+// UPDATED: Now supports Docker environment variables via CORS_ORIGIN
 const whitelist = process.env.NODE_ENV === 'production' 
-  ? ['https://your-production-domain.com'] 
-  : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+  ? ['https://your-production-domain.com', process.env.CORS_ORIGIN] 
+  : [
+      'http://localhost:5173',      // Local Vite Dev
+      'http://127.0.0.1:5173',      // Local IP Dev
+      process.env.CORS_ORIGIN || 'http://localhost' // Docker / Nginx on Port 80
+    ];
 
 const corsOptions = {
   origin: function (origin, callback) {
     // !origin allows server-to-server requests (like Postman or internal scripts)
+    // We check if the incoming origin exists in our whitelist array
     if (whitelist.indexOf(origin) !== -1 || !origin) {
       callback(null, true);
     } else {
+      console.log('Blocked by CORS:', origin); // Optional: Log blocked requests
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true, // Required to allow browser to send/receive cookies
+  credentials: true, // CRITICAL: Required to allow browser to send/receive HttpOnly cookies
   methods: ['GET', 'POST', 'PUT', 'DELETE']
 };
 
