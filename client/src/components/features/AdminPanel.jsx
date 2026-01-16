@@ -5,7 +5,7 @@ import authService from '../../services/authService';
 import Card from '../layout/Card';
 import InputGroup from '../ui/InputGroup';
 import Button from '../ui/Button';
-import { cyberStyles as styles } from '../../utils/themeStyles';
+import Checkbox from '../ui/Checkbox';
 import { FaTrash, FaUserShield, FaEnvelope, FaKey, FaArrowLeft, FaLock, FaUsersCog } from 'react-icons/fa';
 
 const AdminPanel = () => {
@@ -96,48 +96,58 @@ const AdminPanel = () => {
     navigate('/');
   };
 
+  // Login View
   if (!isAdminLoggedIn) return (
-    <div style={{ padding: '20px' }}>
-      <Card title="ADMIN TERMINAL">
-        <form onSubmit={handleAdminLogin}>
-          <InputGroup icon={<FaEnvelope />} type="email" placeholder="Email" onChange={(e) => setAdminCreds({...adminCreds, email: e.target.value})} required />
-          <InputGroup icon={<FaLock />} type="password" placeholder="Passcode" onChange={(e) => setAdminCreds({...adminCreds, password: e.target.value})} required />
+    <Card title="ADMIN TERMINAL">
+      <form onSubmit={handleAdminLogin}>
+        <InputGroup icon={<FaEnvelope />} type="email" placeholder="Email" onChange={(e) => setAdminCreds({...adminCreds, email: e.target.value})} required />
+        <InputGroup icon={<FaLock />} type="password" placeholder="Passcode" onChange={(e) => setAdminCreds({...adminCreds, password: e.target.value})} required />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
           <Button type="submit" fullWidth>INITIALIZE</Button>
-          <Button variant="secondary" fullWidth style={{ marginTop: '10px' }} onClick={() => navigate('/')}>EXIT</Button>
-        </form>
-      </Card>
-    </div>
+          <Button variant="secondary" fullWidth onClick={() => navigate('/')}>EXIT</Button>
+        </div>
+      </form>
+    </Card>
   );
 
+  // Dashboard View
   return (
-    <div style={styles.adminContainer}>
-      <div style={styles.toolbar}>
+    <div className="admin-panel">
+      {/* Toolbar */}
+      <div className="admin-toolbar">
         <Button variant="secondary" fullWidth onClick={() => navigate('/')}><FaArrowLeft /> BASE</Button>
         <Button variant="danger" fullWidth onClick={handleLockPanel}>LOCK PANEL</Button>
       </div>
 
+      {/* Provisioning Card */}
       <Card title="PROVISION ACCOUNT">
         <form onSubmit={handleCreateOperative}>
           <InputGroup icon={<FaUsersCog />} placeholder="Name" value={newUser.name} onChange={(e) => setNewUser({...newUser, name: e.target.value})} required />
           <InputGroup icon={<FaEnvelope />} type="email" placeholder="Email" value={newUser.email} onChange={(e) => setNewUser({...newUser, email: e.target.value})} required />
           <InputGroup icon={<FaKey />} type="password" placeholder="Passcode" value={newUser.password} onChange={(e) => setNewUser({...newUser, password: e.target.value})} required />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-            <input type="checkbox" checked={newUser.isAdmin} onChange={(e) => setNewUser({...newUser, isAdmin: e.target.checked})} style={{ accentColor: 'var(--cyber-red)' }} />
-            <label style={{ fontSize: '12px', color: '#888' }}>Administrative Privileges</label>
-          </div>
+          
+          <Checkbox 
+            label="Administrative Privileges" 
+            checked={newUser.isAdmin} 
+            onChange={(e) => setNewUser({...newUser, isAdmin: e.target.checked})} 
+          />
+          
           <Button type="submit" fullWidth>CREATE</Button>
         </form>
       </Card>
 
+      {/* Directory Card */}
       <Card title="ACTIVE DIRECTORY">
-        <div style={{ width: '100%', maxHeight: '300px', overflowY: 'auto' }}>
+        <div className="user-list">
           {users.map(u => (
-            <div key={u.id} style={styles.userItem(u.is_admin)}>
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ color: '#fff', fontSize: '13px', fontWeight: 'bold' }}> {u.name} {u.is_admin && <FaUserShield color="#ff4444" size={10} />} </div>
-                <div style={{ color: '#555', fontSize: '11px' }}>{u.email}</div>
+            <div key={u.id} className={`user-item ${u.is_admin ? 'user-item--admin' : ''}`}>
+              <div className="user-item__info">
+                <h4>{u.name} {u.is_admin && <FaUserShield color="#ff4444" size={12} />}</h4>
+                <span>{u.email}</span>
               </div>
-              <Button onClick={() => handleDeleteOperative(u.id)} variant="danger" style={{ height: '32px', width: '32px', padding: '0' }}><FaTrash size={12} /></Button>
+              <Button onClick={() => handleDeleteOperative(u.id)} variant="danger" style={{ padding: '5px 10px', height: '30px' }}>
+                <FaTrash size={12} />
+              </Button>
             </div>
           ))}
         </div>

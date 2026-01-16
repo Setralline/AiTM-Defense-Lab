@@ -7,11 +7,10 @@ import {
 import useMFA from '../../hooks/useMFA';
 import Card from '../layout/Card';
 import Button from '../ui/Button';
-import { cyberStyles as styles } from '../../utils/themeStyles'; 
 import authService from '../../services/authService';
 
 const Dashboard = ({ user, setUser, onLogout }) => {
-  const { isMfaEnabled, qrCode, setQrCode, enableMFA, disableMFA, loading, error } = useMFA(user, setUser);
+  const { isMfaEnabled, qrCode, setQrCode, enableMFA, disableMFA, loading } = useMFA(user, setUser);
 
   /**
    * Terminate Session
@@ -25,12 +24,7 @@ const Dashboard = ({ user, setUser, onLogout }) => {
       // 2. Visual feedback for the operative
       toast('Session terminated. Security lock active.', { 
         icon: '🚫',
-        style: {
-          borderRadius: '0',
-          background: '#1a1a1a',
-          color: '#ff4444',
-          border: '1px solid #ff4444'
-        }
+        className: 'toast-custom'
       });
 
       // 3. Reset React state and redirect to home
@@ -43,42 +37,55 @@ const Dashboard = ({ user, setUser, onLogout }) => {
 
   return (
     <Card title="OPERATIVE TERMINAL">
-      <div style={styles.infoPanel}>
-        <div style={styles.clearanceBadge(isMfaEnabled)}>
+      {/* Info Panel Block */}
+      <div className="info-panel">
+        {/* Clearance Badge Modifier: changes color based on MFA status */}
+        <div className={`clearance-badge ${isMfaEnabled ? 'clearance-badge--secure' : 'clearance-badge--restricted'}`}>
           {isMfaEnabled ? 'LEVEL 5 CLEARANCE' : 'RESTRICTED ACCESS'}
         </div>
 
-        <div style={styles.row}>
-          <span style={styles.icon}><FaUserSecret /></span> 
-          <span style={{ letterSpacing: '1px' }}>{user?.name?.toUpperCase() || 'UNKNOWN'}</span>
+        {/* User Info Rows */}
+        <div className="info-panel__row">
+          <span className="info-panel__icon"><FaUserSecret /></span> 
+          <span className="info-panel__text">{user?.name?.toUpperCase() || 'UNKNOWN'}</span>
         </div>
 
-        <div style={styles.row}>
-          <span style={styles.icon}><FaEnvelope /></span> {user?.email}
+        <div className="info-panel__row">
+          <span className="info-panel__icon"><FaEnvelope /></span> 
+          <span className="info-panel__text">{user?.email}</span>
         </div>
 
-        <div style={styles.row}>
-          <span style={styles.icon}><FaFingerprint /></span>
-          <span style={{ color: isMfaEnabled ? '#2ecc71' : '#ff4444', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {isMfaEnabled ? 'ENCRYPTED' : 'UNPROTECTED'} {isMfaEnabled ? <FaLock size={12}/> : <FaUnlock size={12}/>}
+        <div className="info-panel__row">
+          <span className="info-panel__icon"><FaFingerprint /></span>
+          <span className={`info-panel__status ${isMfaEnabled ? 'info-panel__status--secure' : 'info-panel__status--warning'}`}>
+            {isMfaEnabled ? 'ENCRYPTED' : 'UNPROTECTED'} 
+            {isMfaEnabled ? <FaLock size={12}/> : <FaUnlock size={12}/>}
           </span>
         </div>
       </div>
 
+      {/* QR Code Section */}
       {qrCode && (
-        <div style={styles.qrContainer}>
-          <p style={{ fontSize: '11px', fontWeight: 'bold' }}>SCAN WITH AUTHENTICATOR</p>
-          <img src={qrCode} alt="MFA" style={{ width: '150px', margin: '0 auto' }} />
-          <Button onClick={() => setQrCode(null)} variant="secondary" fullWidth style={{ marginTop: '10px' }}>
+        <div className="qr-container">
+          <p className="qr-container__label">SCAN WITH AUTHENTICATOR</p>
+          <img src={qrCode} alt="MFA" className="qr-container__img" />
+          <Button onClick={() => setQrCode(null)} variant="secondary" fullWidth className="btn--mt">
             CONFIRM SCAN
           </Button>
         </div>
       )}
 
-      <div style={styles.actions}>
-        <Button onClick={isMfaEnabled ? disableMFA : enableMFA} variant={isMfaEnabled ? "danger" : "primary"} disabled={loading}>
-          {isMfaEnabled ? <FaUnlock /> : <FaQrcode />} {loading ? 'PROCESSING...' : (isMfaEnabled ? 'DEACTIVATE MFA' : 'ACTIVATE MFA')}
+      {/* Actions */}
+      <div className="form-actions">
+        <Button 
+          onClick={isMfaEnabled ? disableMFA : enableMFA} 
+          variant={isMfaEnabled ? "danger" : "primary"} 
+          disabled={loading}
+        >
+          {isMfaEnabled ? <FaUnlock /> : <FaQrcode />} 
+          {loading ? 'PROCESSING...' : (isMfaEnabled ? 'DEACTIVATE MFA' : 'ACTIVATE MFA')}
         </Button>
+        
         <Button onClick={handleLogout} variant="secondary">
           <FaPowerOff /> TERMINATE SESSION
         </Button>

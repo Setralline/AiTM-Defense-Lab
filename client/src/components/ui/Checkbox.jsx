@@ -1,47 +1,23 @@
 import React, { useId } from 'react';
-import { cyberStyles } from '../../utils/themeStyles';
 
 /**
- * Checkbox Component
- * Stylized for "Remember Me" and administrative toggles.
- * Fully optimized for React 19 accessibility standards.
+ * Checkbox Component (BEM)
+ * Uses .checkbox block.
  */
 const Checkbox = ({ label, checked, onChange, name }) => {
   const uniqueId = useId();
 
-  // نستخدم التنسيقات من الملف المركزي مع إضافة خصائص فريدة للمكون
-  const styles = {
-    wrapper: { 
-      ...cyberStyles.checkboxContainer, // استخدام الستايل المركزي
-      width: '100%',
-      userSelect: 'none',
-      margin: '15px 0' 
-    },
-    input: { 
-      width: '16px', 
-      height: '16px', 
-      marginRight: '10px', 
-      accentColor: 'var(--cyber-red)', 
-      cursor: 'pointer'
-    },
-    label: { 
-      cursor: 'pointer', 
-      fontSize: '0.85rem',
-      fontFamily: 'var(--cyber-font)'
-    }
-  };
-
   return (
-    <div style={styles.wrapper}>
+    <div className="checkbox">
       <input 
+        className="checkbox__input"
         type="checkbox" 
         id={uniqueId}
         name={name}
         checked={checked} 
         onChange={onChange} 
-        style={styles.input} 
       />
-      <label htmlFor={uniqueId} style={styles.label}>
+      <label htmlFor={uniqueId} className="checkbox__label">
         {label}
       </label>
     </div>

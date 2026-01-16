@@ -3,17 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FaUserAstronaut, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa';
 import authService from '../../services/authService';
+
+// UI Components (BEM Architecture)
 import Card from '../layout/Card';
 import InputGroup from '../ui/InputGroup';
 import Button from '../ui/Button';
+import Checkbox from '../ui/Checkbox';
 import Dashboard from './Dashboard';
-import { cyberStyles as styles } from '../../utils/themeStyles';
 
 /**
  * Level 2 Component: Modern Authentication Simulation (JWT)
  * Simulates a Single Page Application (SPA) environment where tokens are 
- * managed explicitly by the client logic, making them susceptible to XSS but 
- * allowing for stateless architecture.
+ * managed explicitly by the client logic.
  */
 const Level2 = ({ user, setUser }) => {
   const navigate = useNavigate();
@@ -30,7 +31,6 @@ const Level2 = ({ user, setUser }) => {
   });
 
   // 1. Session Validation
-  // Checks for existing JWT in local/session storage on mount.
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -57,8 +57,7 @@ const Level2 = ({ user, setUser }) => {
 
     try {
       if (step === 1) {
-        // Step A: Initial Credential Exchange
-        // We send a standard JSON payload here (handled by axios default headers in authService)
+        // Step A: Initial Credential Exchange (JSON Payload)
         const res = await authService.loginLevel2({
           email: formData.email.trim(),
           password: formData.password,
@@ -83,7 +82,6 @@ const Level2 = ({ user, setUser }) => {
         if (res.success) finalizeLogin(res, tId);
       }
     } catch (err) {
-      // Use sanitized error message from interceptor
       toast.error(err.sanitizedMessage || 'Token Rejected.', { id: tId });
     } finally {
       setIsLoading(false);
@@ -92,8 +90,7 @@ const Level2 = ({ user, setUser }) => {
 
   /**
    * Finalizes the login and persists the JWT.
-   * CRITICAL: This explicit storage is what differentiates Level 2 from Level 1.
-   * It simulates the attack surface where tokens are accessible via JavaScript.
+   * CRITICAL: Explicit storage simulates XSS vulnerability surface.
    */
   const finalizeLogin = (res, tId) => {
     const { token, user: userData } = res;
@@ -101,7 +98,7 @@ const Level2 = ({ user, setUser }) => {
     // Determine storage persistence based on user preference
     const storage = formData.rememberMe ? localStorage : sessionStorage;
     
-    // Clean slate protocol: Remove any conflicting tokens first
+    // Clean slate protocol
     localStorage.removeItem('auth_token');
     sessionStorage.removeItem('auth_token');
     
@@ -116,12 +113,10 @@ const Level2 = ({ user, setUser }) => {
   const handleLogout = async () => {
     const tId = toast.loading('Revoking JWT...');
     try {
-      // CRITICAL: Call backend to blacklist this specific token
       await authService.logout();
     } catch (err) {
       console.error('Revocation failed:', err);
     } finally {
-      // Local Cleanup
       setUser(null);
       setStep(1);
       toast.success('Token Revoked & Session Terminated.', { id: tId, icon: '🔑' });
@@ -153,16 +148,14 @@ const Level2 = ({ user, setUser }) => {
               onChange={handleChange} 
               required 
             />
-            <div style={styles.checkboxContainer}>
-              <input 
-                type="checkbox" 
-                name="rememberMe" 
-                onChange={handleChange} 
-                checked={formData.rememberMe} 
-                style={{ marginRight: '8px', accentColor: 'var(--cyber-red)' }} 
-              />
-              <label>Stay Persistent (JWT)</label>
-            </div>
+            
+            {/* New BEM Checkbox Component */}
+            <Checkbox 
+              label="Stay Persistent (JWT)" 
+              name="rememberMe" 
+              checked={formData.rememberMe} 
+              onChange={handleChange} 
+            />
           </>
         ) : (
           <InputGroup 
@@ -177,7 +170,8 @@ const Level2 = ({ user, setUser }) => {
           />
         )}
 
-        <div style={styles.actions}>
+        {/* BEM Actions Wrapper */}
+        <div className="form-actions">
           <Button type="submit" disabled={isLoading} fullWidth>
             {isLoading ? 'PROCESSING...' : (step === 1 ? 'INITIATE' : 'VERIFY')}
           </Button>
@@ -186,7 +180,6 @@ const Level2 = ({ user, setUser }) => {
             variant="secondary" 
             onClick={() => navigate('/')} 
             fullWidth 
-            style={styles.returnBtn}
           >
             <FaArrowLeft /> RETURN TO BASE
           </Button>

@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import authService from '../services/authService';
 
+/**
+ * useMFA Hook
+ * Manages the logic for enabling/disabling TOTP Multi-Factor Authentication.
+ */
 const useMFA = (user, setUser) => {
   const [qrCode, setQrCode] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Determine if MFA is active based on the secret's presence
   const isMfaEnabled = !!(user?.mfa_secret);
 
   const enableMFA = async () => {
@@ -16,6 +21,7 @@ const useMFA = (user, setUser) => {
     }
     setLoading(true);
     const mfaToast = toast.loading('Generating secure encryption keys...');
+    
     try {
       const res = await authService.enableMFA({ email: user.email });
       if (res.success) {
@@ -35,6 +41,7 @@ const useMFA = (user, setUser) => {
   const executeDisableMFA = async () => {
     setLoading(true);
     const disableToast = toast.loading('Purging security secret...');
+    
     try {
       const res = await authService.disableMFA({ email: user.email });
       if (res.success) {
@@ -51,30 +58,30 @@ const useMFA = (user, setUser) => {
     }
   };
 
+  /**
+   * Triggers a custom toast notification requiring explicit confirmation.
+   * Uses BEM classes for styling instead of inline styles.
+   */
   const disableMFA = () => {
     toast((t) => (
-      <div style={{ textAlign: 'center' }}>
-        <b style={{ color: '#ff4444', display: 'block', marginBottom: '8px' }}>CRITICAL SECURITY WARNING</b>
+      <div className="toast-alert">
+        <b className="toast-alert__title">CRITICAL SECURITY WARNING</b>
         Deactivating MFA will lower your clearance. Proceed?
-        <div style={{ marginTop: '12px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+        
+        <div className="toast-alert__actions">
           <button
+            className="toast-alert__btn toast-alert__btn--confirm"
             onClick={() => {
               toast.dismiss(t.id);
               executeDisableMFA();
             }}
-            style={{
-              background: '#ff4444', color: '#fff', border: 'none', padding: '5px 12px',
-              borderRadius: '3px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold'
-            }}
           >
             CONFIRM
           </button>
+          
           <button
+            className="toast-alert__btn"
             onClick={() => toast.dismiss(t.id)}
-            style={{
-              background: '#333', color: '#fff', border: 'none', padding: '5px 12px',
-              borderRadius: '3px', cursor: 'pointer', fontSize: '11px'
-            }}
           >
             ABORT
           </button>
@@ -82,7 +89,7 @@ const useMFA = (user, setUser) => {
       </div>
     ), {
       duration: 6000,
-      style: { border: '1px solid #ff4444' }
+      className: 'toast-custom-border' // Optional helper class if needed
     });
   };
 

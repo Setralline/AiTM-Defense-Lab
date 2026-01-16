@@ -1,51 +1,48 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom'; // 1. استيراد هوك التنقل
+import { useNavigate } from 'react-router-dom';
 import { FaCookieBite, FaShieldVirus, FaSkullCrossbones } from 'react-icons/fa';
 import Card from '../layout/Card';
 import Button from '../ui/Button';
-import { cyberStyles as styles } from '../../utils/themeStyles';
 
-/**
- * Home Component
- * Entry point for the simulation: Mission selection.
- * REFACTORED: Uses 'useNavigate' instead of Link wrapping Buttons to fix click events.
- */
 const Home = () => {
   const navigate = useNavigate();
 
   return (
     <Card title="SELECT MISSION" footer="UNAUTHORIZED ACCESS PROHIBITED">
-      <div style={styles.homeContainer}>
-        <p style={styles.homeDescription}>
+      <div className="home-grid">
+        <p className="home-desc">
           Choose your target environment to begin the simulation and test authentication vulnerabilities.
         </p>
         
-        {/* Mission Level 1 */}
-        {/* FIX: Removed <Link> wrapper, added onClick to Button */}
+        {/* Level 1 */}
         <Button 
           variant="primary" 
           fullWidth 
           onClick={() => navigate('/level1')}
         >
-          <FaCookieBite style={styles.homeIcon} /> 
+          <FaCookieBite size={18} /> 
           LEVEL 1: COOKIES (LEGACY)
         </Button>
 
-        {/* Spacer for visual separation */}
-        <div style={{ height: '1rem' }}></div>
-
-        {/* Mission Level 2 */}
+        {/* Level 2 */}
         <Button 
           variant="secondary" 
           fullWidth 
           onClick={() => navigate('/level2')}
         >
-          <FaShieldVirus style={styles.homeIcon} /> 
+          <FaShieldVirus size={18} /> 
           LEVEL 2: TOKENS (MODERN)
         </Button>
 
-        {/* System Status Decorative Element */}
-        <div style={styles.systemStatus}>
+        {/* Decor */}
+        <div style={{ 
+          marginTop: '20px', 
+          textAlign: 'center', 
+          fontSize: '11px', 
+          color: 'var(--cyber-green)',
+          letterSpacing: '3px',
+          textShadow: '0 0 5px rgba(0, 255, 65, 0.5)'
+        }}>
           <FaSkullCrossbones style={{ verticalAlign: 'middle', marginRight: '5px' }} /> 
           PHISHING LAB INITIALIZED
         </div>

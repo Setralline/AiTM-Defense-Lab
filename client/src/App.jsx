@@ -10,7 +10,7 @@ import Level2 from './components/features/Level2';
 import Footer from './components/layout/Footer';
 
 // === Styles & Config ===
-import { layoutStyle, toasterOptions } from './utils/themeStyles';
+import { toasterOptions } from './utils/themeStyles';
 
 // === BROWSER SIGNATURE (Thesis Branding) ===
 if (typeof window !== 'undefined') {
@@ -32,7 +32,12 @@ const App = () => {
 
   return (
     <Router>
-      <div style={layoutStyle}>
+      {/* CRITICAL CHANGE: 
+        Replaced style={layoutStyle} with className="layout".
+        This class is defined in src/styles/main.css 
+      */}
+      <div className="layout">
+        
         {/* Global Toast Notifications */}
         <Toaster position="top-right" toastOptions={toasterOptions} />
         
