@@ -26,6 +26,7 @@ const whitelist = process.env.NODE_ENV === 'production'
 
 const corsOptions = {
   origin: function (origin, callback) {
+    // !origin allows server-to-server requests (like Postman or internal scripts)
     if (whitelist.indexOf(origin) !== -1 || !origin) {
       callback(null, true);
     } else {
@@ -87,4 +88,12 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// CRITICAL FIX FOR TESTING:
+// Only start the server if this file is run directly (node server.js).
+// If imported by Jest/Supertest, do NOT start listening automatically.
+if (require.main === module) {
+  startServer();
+}
+
+// Export app for testing
+module.exports = app;
