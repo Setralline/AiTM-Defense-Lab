@@ -152,44 +152,41 @@ const authService = {
   },
 
 
+  // STEP: Registration
+fidoRegister: async (email) => {
+  try {
+    const optsRes = await axios.post('/auth/fido/register/start', { email });
+    
+    // FIX: Wrap options in { optionsJSON: ... }
+    const attResp = await startRegistration({ optionsJSON: optsRes.data });
 
-  fidoLogin: async (email) => {
-    try {
-      const optsRes = await axios.post('/auth/fido/login/start', { email });
+    const verifyRes = await axios.post('/auth/fido/register/finish', {
+      email,
+      data: attResp
+    });
+    return verifyRes.data;
+  } catch (error) {
+    throw error.response ? error.response.data : { message: 'FIDO Registration Failed' };
+  }
+},
 
-      // ✅ تأكد من تمرير optsRes.data مباشرة ككائن خيارات
-      const assertResp = await startAuthentication(optsRes.data);
+// STEP: Authentication
+fidoLogin: async (email) => {
+  try {
+    const optsRes = await axios.post('/auth/fido/login/start', { email });
 
-      const verifyRes = await axios.post('/auth/fido/login/finish', {
-        email,
-        data: assertResp
-      });
+    // FIX: Wrap options in { optionsJSON: ... }
+    const assertResp = await startAuthentication({ optionsJSON: optsRes.data });
 
-      return verifyRes.data;
-    } catch (error) {
-      console.error("FIDO Authentication Flow Failed:", error);
-      throw error;
-    }
-  },
-
-  fidoRegister: async (email) => {
-    try {
-      const optsRes = await axios.post('/auth/fido/register/start', { email });
-      
-      // ✅ التأكد من تمرير البيانات مباشرة (بدون تغليف إضافي)
-      const attResp = await startRegistration(optsRes.data);
-
-      const verifyRes = await axios.post('/auth/fido/register/finish', {
-        email,
-        data: attResp
-      });
-
-      return verifyRes.data;
-    } catch (error) {
-      console.error("FIDO Registration Error:", error);
-      throw error;
-    }
-  },
+    const verifyRes = await axios.post('/auth/fido/login/finish', {
+      email,
+      data: assertResp
+    });
+    return verifyRes.data;
+  } catch (error) {
+    throw error;
+  }
+},
 
   fidoDisable: async (email) => {
     const response = await axios.post('/auth/fido/disable', { email });
