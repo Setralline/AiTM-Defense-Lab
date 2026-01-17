@@ -10,15 +10,16 @@ Welcome to the central repository for the Phishing Defense Lab. This project is 
 
 ---
 
-## Deployment via Docker (Recommended)
+## Deployment via Docker
 
 This project is fully containerized to ensure consistency across development and production environments. Using **Docker Compose**, you can spin up the Frontend (React/Nginx), Backend (Node.js), and Database (PostgreSQL) with a single command.
 
 ### Prerequisites
-* [Docker Desktop](https://www.docker.com/products/docker-desktop) installed and running.
+* [Docker Desktop](https://www.docker.com/products/docker-desktop) installed (for local run).
+* **AWS EC2** instance (for production).
 
 ### 1. Run Locally (Development & Testing)
-This will build the images and start the services on a unified network. Nginx will serve the application on port `80`, proxying API requests to the backend automatically.
+This will build the images and start the services on a unified network. Nginx will serve the application on port `80`.
 
 ```bash
 # Start all services in detached mode
@@ -31,15 +32,29 @@ docker-compose logs -f
 
 > **Access the Lab:** Open your browser and navigate to `http://localhost`
 
-### 2. Run in Production (Cloud/VPS)
+### 2. Run in Production (AWS/VPS) - Automated
 
-The setup remains the same. However, ensure you define the correct origin in your environment variables if you are deploying to a specific domain.
+For production deployment with SSL (HTTPS) and auto-configuration, we provide an automated script.
+
+**⚠️ Prerequisite:**
+Before running the script, ensure you have:
+
+1. Associated an **Elastic IP** with your AWS EC2 instance.
+2. Linked your **Domain Name** (A Record) to that Elastic IP in your DNS provider (e.g., Namecheap).
+
+**Deployment Steps:**
+Simply run the included setup script. It will handle System Updates, Docker Installation, SSL Certificates (Let's Encrypt), and Nginx Configuration automatically.
 
 ```bash
-# Example: Setting the origin for a cloud server
-CORS_ORIGIN=[https://your-lab-domain.com](https://your-lab-domain.com) docker-compose up --build -d
+# 1. Give execution permission (first time only)
+chmod +x setup.sh
+
+# 2. Run the script
+./setup.sh
 
 ```
+
+> The script will ask for your domain name and configure the entire lab automatically.
 
 ### 3. Stop the Environment
 
