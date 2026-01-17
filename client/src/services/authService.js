@@ -85,21 +85,55 @@ const authService = {
   },
 
   /**
+   * UNIFIED MODERN LOGIN (Levels 2, 3, 4).
+   * * Technical Note:
+   * Supports protocol versioning ('v2' vs 'v3') to target different defense mechanisms.
+   * Handles 403 Forbidden responses from Server-Side Defense (Lab 3).
+   */
+  loginModern: async (email, password, version = 'v2') => {
+    // Determine endpoint: v3 goes to /auth/level3, others to /auth/level2
+    const endpoint = `/auth/level${version === 'v3' ? '3' : '2'}`;
+    
+    try {
+      const response = await axios.post(endpoint, { email, password });
+      
+      // Default persistence (Components may override this with sessionStorage)
+      if (response.data.token) {
+        localStorage.setItem('auth_token', response.data.token);
+      }
+      
+      return response.data;
+    } catch (error) {
+      // Special handling for Lab 3 Defense (403 Forbidden)
+      if (error.response && error.response.status === 403) {
+        throw { 
+          message: `🛡️ SECURITY BLOCKED: ${error.response.data.message}`,
+          status: 403 
+        };
+      }
+      
+      throw error.response ? error.response.data : { message: 'Login Failed' };
+    }
+  },
+
+  /**
    * LEVEL 2: Modern Simulation (JWT/Stateless).
    * * Technical Note:
    * Handles the reception of the JWT and persists it in client storage.
    * This simulates the vulnerability of tokens to XSS if not handled correctly.
    */
   loginLevel2: async (data) => {
-    const response = await axios.post('/auth/level2', data);
-    
-    // Persist token based on "Remember Me" preference
-    if (response.data.success && response.data.token) {
-        const storage = data.rememberMe ? localStorage : sessionStorage;
-        storage.setItem('auth_token', response.data.token);
-    }
-    
-    return response.data;
+    // Wrapper for backward compatibility or specific Level 2 logic
+    return authService.loginModern(data.email, data.password, 'v2').then(res => {
+        // Specific Level 2 persistence logic based on "Remember Me"
+        if (res.success && res.token) {
+            const storage = data.rememberMe ? localStorage : sessionStorage;
+            // Clean up default set by loginModern if needed, or just overwrite/ensure correct store
+            if (!data.rememberMe) localStorage.removeItem('auth_token');
+            storage.setItem('auth_token', res.token);
+        }
+        return res;
+    });
   },
 
   // =========================================================================
