@@ -11,6 +11,7 @@ const authController = require('../controllers/authController');
 const level1Controller = require('../controllers/level1Controller');
 const level2Controller = require('../controllers/level2Controller');
 const mfaController = require('../controllers/mfaController');
+const fidoController = require('../controllers/fidoController'); 
 
 // ==========================================
 // SESSION & IDENTITY ROUTES
@@ -50,6 +51,25 @@ router.post('/level2', level2Controller.loginLevel2);
  * Protected by detectProxy middleware to block unauthorized proxies.
  */
 router.post('/level3', detectProxy, level2Controller.loginLevel2);
+
+/**
+ * Tier 5: Hardware-Bound Authentication (FIDO2/WebAuthn)
+ * Uses cryptographic signatures bound to the origin, making it phishing-proof.
+ */
+
+// Step 1: Password Verification (Before FIDO Challenge) -> 
+router.post('/fido/login-pwd', fidoController.loginWithPassword);
+
+// Registration Ceremony
+router.post('/fido/register/start', fidoController.registerStart);
+router.post('/fido/register/finish', fidoController.registerFinish);
+
+// Authentication Ceremony (Step 2: Hardware Challenge)
+router.post('/fido/login/start', fidoController.loginStart);
+router.post('/fido/login/finish', fidoController.loginFinish);
+
+// Disable Fido
+router.post('/fido/disable', fidoController.disableKey);
 
 // ==========================================
 // MULTI-FACTOR AUTHENTICATION (MFA)

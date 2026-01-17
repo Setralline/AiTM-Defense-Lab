@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaCookieBite, FaShieldVirus, FaUserShield, FaGlobe, FaSkullCrossbones } from 'react-icons/fa';
+import { FaCookieBite, FaShieldVirus, FaUserShield, FaGlobe, FaFingerprint, FaSkullCrossbones } from 'react-icons/fa';
 import Card from '../layout/Card';
 import Button from '../ui/Button';
 
@@ -34,7 +34,7 @@ const Home = () => {
           LEVEL 2: TOKENS (MODERN)
         </Button>
 
-        {/* Level 3: Server Defense (New) */}
+        {/* Level 3: Server Defense */}
         <Button 
           variant="secondary" 
           fullWidth 
@@ -44,7 +44,7 @@ const Home = () => {
           LEVEL 3: HEADER DEFENSE
         </Button>
 
-        {/* Level 4: Client Defense (New) */}
+        {/* Level 4: Client Defense */}
         <Button 
           variant="secondary" 
           fullWidth 
@@ -52,6 +52,21 @@ const Home = () => {
         >
           <FaGlobe size={18} /> 
           LEVEL 4: CLIENT DEFENSE
+        </Button>
+
+        {/* Level 5: FIDO2 Hardware Defense (NEW) */}
+        <Button 
+          variant="secondary" 
+          fullWidth 
+          onClick={() => navigate('/level5')}
+          style={{ 
+            borderColor: '#f1c40f', 
+            color: '#f39c12',
+            background: 'rgba(241, 196, 15, 0.05)'
+          }}
+        >
+          <FaFingerprint size={18} /> 
+          LEVEL 5: FIDO2 (PHISHING PROOF)
         </Button>
 
         {/* Decor Footer */}

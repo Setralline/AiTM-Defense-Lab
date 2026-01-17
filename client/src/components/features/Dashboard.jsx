@@ -9,7 +9,8 @@ import Card from '../layout/Card';
 import Button from '../ui/Button';
 import authService from '../../services/authService';
 
-const Dashboard = ({ user, setUser, onLogout }) => {
+//  CRITICAL FIX: Added 'children' to props to allow Level 5 injection
+const Dashboard = ({ user, setUser, onLogout, children }) => {
   const { isMfaEnabled, qrCode, setQrCode, enableMFA, disableMFA, loading } = useMFA(user, setUser);
 
   /**
@@ -64,7 +65,7 @@ const Dashboard = ({ user, setUser, onLogout }) => {
         </div>
       </div>
 
-      {/* QR Code Section */}
+      {/* QR Code Section (Standard MFA) */}
       {qrCode && (
         <div className="qr-container">
           <p className="qr-container__label">SCAN WITH AUTHENTICATOR</p>
@@ -75,8 +76,11 @@ const Dashboard = ({ user, setUser, onLogout }) => {
         </div>
       )}
 
+      {/* ✅ INJECTED CONTENT: This renders the FIDO Button passed from Level5.jsx */}
+      {children}
+
       {/* Actions */}
-      <div className="form-actions">
+      <div className="form-actions" style={{ marginTop: '20px' }}>
         <Button 
           onClick={isMfaEnabled ? disableMFA : enableMFA} 
           variant={isMfaEnabled ? "danger" : "primary"} 
