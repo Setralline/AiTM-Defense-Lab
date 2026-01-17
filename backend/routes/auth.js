@@ -3,6 +3,8 @@ const router = express.Router();
 
 // Security middleware to intercept and block revoked tokens
 const checkBlacklist = require('../middleware/checkBlacklist');
+// Security middleware for Lab 3 to detect proxy anomalies
+const detectProxy = require('../middleware/detectProxy');
 
 // Controller modules for different authentication tiers
 const authController = require('../controllers/authController');
@@ -39,8 +41,15 @@ router.post('/level1', level1Controller.loginLevel1);
 
 /**
  * Tier 2: Modern JWT-Based Authentication (JSON Payload)
+ * Note: This endpoint is also used by Tier 4 (Client-Side Defense)
  */
 router.post('/level2', level2Controller.loginLevel2);
+
+/**
+ * Tier 3: Server-Side Defense (Header Analysis)
+ * Protected by detectProxy middleware to block unauthorized proxies.
+ */
+router.post('/level3', detectProxy, level2Controller.loginLevel2);
 
 // ==========================================
 // MULTI-FACTOR AUTHENTICATION (MFA)

@@ -7,6 +7,8 @@ import AdminPanel from './components/features/AdminPanel';
 import Home from './components/features/Home';
 import Level1 from './components/features/Level1';
 import Level2 from './components/features/Level2';
+import Level3 from './components/features/Level3'; 
+import Level4 from './components/features/Level4';
 import Footer from './components/layout/Footer';
 
 // === Styles & Config ===
@@ -52,10 +54,22 @@ const App = () => {
             element={<Level1 user={user} setUser={setUser} />} 
           />
 
-          {/* Level 2: Modern Auth (JWT) */}
+          {/* Level 2: Modern Auth (JWT) - Vulnerable */}
           <Route 
             path="/level2" 
             element={<Level2 user={user} setUser={setUser} />} 
+          />
+
+          {/* Level 3: Server Defense (Header Analysis) -*/}
+          <Route 
+            path="/level3" 
+            element={<Level3 user={user} setUser={setUser} />} 
+          />
+
+          {/* Level 4: Client Defense (Domain Guard) - */}
+          <Route 
+            path="/level4" 
+            element={<Level4 user={user} setUser={setUser} />} 
           />
 
           {/* Admin Dashboard */}

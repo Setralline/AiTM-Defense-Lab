@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaCookieBite, FaShieldVirus, FaSkullCrossbones } from 'react-icons/fa';
+import { FaCookieBite, FaShieldVirus, FaUserShield, FaGlobe, FaSkullCrossbones } from 'react-icons/fa';
 import Card from '../layout/Card';
 import Button from '../ui/Button';
 
@@ -14,7 +14,7 @@ const Home = () => {
           Choose your target environment to begin the simulation and test authentication vulnerabilities.
         </p>
         
-        {/* Level 1 */}
+        {/* Level 1: Legacy */}
         <Button 
           variant="primary" 
           fullWidth 
@@ -24,7 +24,7 @@ const Home = () => {
           LEVEL 1: COOKIES (LEGACY)
         </Button>
 
-        {/* Level 2 */}
+        {/* Level 2: Modern (Vulnerable) */}
         <Button 
           variant="secondary" 
           fullWidth 
@@ -34,7 +34,27 @@ const Home = () => {
           LEVEL 2: TOKENS (MODERN)
         </Button>
 
-        {/* Decor */}
+        {/* Level 3: Server Defense (New) */}
+        <Button 
+          variant="secondary" 
+          fullWidth 
+          onClick={() => navigate('/level3')}
+        >
+          <FaUserShield size={18} /> 
+          LEVEL 3: HEADER DEFENSE
+        </Button>
+
+        {/* Level 4: Client Defense (New) */}
+        <Button 
+          variant="secondary" 
+          fullWidth 
+          onClick={() => navigate('/level4')}
+        >
+          <FaGlobe size={18} /> 
+          LEVEL 4: CLIENT DEFENSE
+        </Button>
+
+        {/* Decor Footer */}
         <div style={{ 
           marginTop: '20px', 
           textAlign: 'center', 
