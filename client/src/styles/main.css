@@ -1,0 +1,559 @@
+/* =========================================
+   1. VARIABLES & DESIGN TOKENS
+   ========================================= */
+:root {
+  /* Colors */
+  --cyber-red: #ff1a1a;
+  --cyber-green: #00ff41;
+  --cyber-gold: #f1c40f;
+  --cyber-dark: #0a0a0a;
+  --cyber-gray: #1f1f1f;
+  --cyber-text-main: #e0e0e0;
+  --cyber-text-muted: #888;
+  
+  /* Borders & Glows */
+  --border-color: #333;
+  --shadow-glow-red: 0 0 15px rgba(255, 26, 26, 0.4);
+  --shadow-glow-green: 0 0 15px rgba(0, 255, 65, 0.4);
+  --shadow-glow-gold: 0 0 15px rgba(243, 156, 18, 0.3);
+  
+  /* Typography */
+  --font-stack: 'Courier New', Courier, monospace;
+}
+
+/* =========================================
+   2. GLOBAL RESET & BASE
+   ========================================= */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--cyber-dark);
+  color: var(--cyber-text-main);
+  font-family: var(--font-stack);
+  margin: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Autofill Fix for Dark Mode */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px var(--cyber-dark) inset !important;
+    -webkit-text-fill-color: white !important;
+}
+
+/* =========================================
+   3. BLOCK: LAYOUT
+   ========================================= */
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 20px;
+  position: relative;
+  justify-content: center; 
+  align-items: center;
+  background-color: var(--cyber-dark); 
+}
+
+/* =========================================
+   4. BLOCK: CARD
+   ========================================= */
+.card {
+  background-color: #0f0f0f;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 35px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+  width: 100%;
+  max-width: 450px;
+  margin: 0 auto;
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.card:hover {
+  border-color: var(--cyber-red);
+}
+
+.card__header { text-align: center; margin-bottom: 25px; }
+.card__logo {
+  width: 80px;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 0 5px rgba(255, 26, 26, 0.3));
+}
+
+.card__title {
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 1.4rem;
+  letter-spacing: 2px;
+  color: #fff;
+  margin: 0;
+}
+
+.card__footer {
+  margin-top: 20px;
+  color: var(--cyber-red);
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* =========================================
+   5. BLOCK: FORM ACTIONS
+   ========================================= */
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 25px;
+  width: 100%;
+}
+
+.form-actions--vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.form-actions .btn {
+  width: 100%;
+}
+
+/* =========================================
+   6. BLOCK: BUTTON
+   ========================================= */
+.btn {
+  height: 48px;
+  padding: 0 25px;
+  border-radius: 4px;
+  font-family: var(--font-stack);
+  font-weight: 900;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  outline: none;
+  position: relative;
+  overflow: hidden;
+  gap: 10px;
+  border: 1px solid transparent;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Button Modifiers */
+.btn--primary {
+  background: var(--cyber-red);
+  color: #000;
+  border: 1px solid var(--cyber-red);
+  box-shadow: var(--shadow-glow-red);
+}
+
+.btn--primary:hover:not(:disabled) {
+  box-shadow: 0 0 25px var(--cyber-red);
+}
+
+.btn--secondary {
+  background: var(--cyber-gray);
+  color: var(--cyber-text-main);
+  border: 1px solid var(--border-color);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  border-color: var(--cyber-text-muted);
+  background: #2a2a2a;
+}
+
+.btn--danger {
+  background: transparent;
+  color: var(--cyber-red);
+  border: 1px solid var(--cyber-red);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: rgba(255, 26, 26, 0.1);
+}
+
+.btn--secure-gold {
+    border-color: var(--cyber-gold) !important;
+    color: #f39c12 !important;
+    background: rgba(241, 196, 15, 0.05) !important;
+}
+
+.btn--secure-gold:hover {
+    background: rgba(241, 196, 15, 0.15) !important;
+    box-shadow: var(--shadow-glow-gold);
+}
+
+.btn--full { width: 100%; }
+.btn--mt { margin-top: 10px; }
+
+/* =========================================
+   7. BLOCK: INPUT GROUP
+   ========================================= */
+.input-group {
+  position: relative;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.input-group__field {
+  width: 100%;
+  padding: 14px 15px 14px 45px;
+  background: var(--cyber-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: #fff;
+  font-family: var(--font-stack);
+  font-size: 14px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.input-group__field:focus {
+  border-color: var(--cyber-red);
+  box-shadow: var(--shadow-glow-red);
+}
+
+.input-group__field--highlight {
+  border-color: var(--cyber-red);
+  text-align: center;
+  padding-left: 15px;
+  font-size: 1.2rem;
+  letter-spacing: 5px;
+}
+
+.input-group__icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+  font-size: 1.2rem;
+  pointer-events: none;
+  transition: color 0.3s;
+}
+
+.input-group__field:focus + .input-group__icon {
+  color: var(--cyber-red);
+}
+
+/* =========================================
+   8. BLOCK: CHECKBOX
+   ========================================= */
+.checkbox {
+  display: flex;
+  align-items: center;
+  margin: 15px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox__input {
+  width: 16px;
+  height: 16px;
+  margin-right: 10px;
+  accent-color: var(--cyber-red);
+  cursor: pointer;
+}
+
+.checkbox__label {
+  font-size: 0.85rem;
+  color: var(--cyber-text-muted);
+}
+
+/* =========================================
+   9. BLOCK: FOOTER
+   ========================================= */
+.footer {
+  width: 100%;
+  padding: 12px 25px;
+  border-top: 1px solid #1a1a1a;
+  background: rgba(5, 5, 5, 0.95);
+  backdrop-filter: blur(5px);
+  color: #666;
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+}
+
+.footer__status {
+  display: flex;
+  align-items: center;
+  color: var(--cyber-red);
+  font-weight: 800;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--cyber-red);
+  border-radius: 50%;
+  margin-right: 8px;
+  box-shadow: 0 0 0 0 rgba(255, 26, 26, 0.7);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 26, 26, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 26, 26, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 26, 26, 0); }
+}
+
+/* =========================================
+   10. BLOCK: ADMIN PANEL
+   ========================================= */
+.admin-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+  padding-bottom: 80px; 
+}
+
+.admin-toolbar {
+  width: 100%;
+  max-width: 450px;
+  display: flex;
+  gap: 10px;
+}
+
+.user-list {
+  width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.user-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.user-item--admin {
+  background: rgba(255, 26, 26, 0.05); /* Red tint for admins */
+}
+
+.user-item__info h4 {
+  margin: 0;
+  color: #fff;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.user-item__info span {
+  color: #555;
+  font-size: 11px;
+}
+
+/* =========================================
+   11. BLOCK: HOME & DASHBOARD
+   ========================================= */
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px;
+  width: 100%;
+}
+
+.home-desc {
+  text-align: center;
+  color: #aaa;
+  margin-bottom: 25px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.home-footer-decor {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--cyber-green);
+    letter-spacing: 3px;
+    text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Dashboard Info Panel */
+.info-panel {
+  background: #000; /* Darker than card for contrast */
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 20px;
+  margin-bottom: 20px;
+  position: relative; /* For badge positioning */
+  overflow: hidden;
+}
+
+.info-panel__row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  font-weight: 500;
+  color: #ccc;
+  font-size: 14px;
+}
+
+.info-panel__row:last-child {
+  margin-bottom: 0;
+}
+
+.info-panel__icon {
+  color: var(--cyber-red);
+  margin-right: 15px;
+  font-size: 1.2rem;
+  width: 24px;
+  text-align: center;
+}
+
+.info-panel__text {
+  letter-spacing: 1px;
+}
+
+/* Badge Element */
+.clearance-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 5px 12px;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #fff;
+}
+
+.clearance-badge--secure {
+  background: var(--cyber-green);
+}
+
+.clearance-badge--restricted {
+  background: #333;
+}
+
+/* Status Colors */
+.info-panel__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-panel__status--secure {
+  color: var(--cyber-green);
+}
+
+.info-panel__status--warning {
+  color: var(--cyber-red);
+}
+
+/* QR Container */
+.qr-container {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  background: #fff;
+  padding: 15px;
+  border-radius: 4px;
+  color: #000;
+}
+
+.qr-container__label {
+  font-size: 11px;
+  font-weight: bold;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.qr-container__img {
+  width: 150px;
+  margin: 0 auto;
+  display: block;
+}
+
+/* Utility Helper */
+.btn--mt {
+  margin-top: 10px;
+}
+
+/* =========================================
+   12. BLOCK: TOAST ALERTS (Custom)
+   ========================================= */
+.toast-alert {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #fff;
+}
+
+.toast-alert__title {
+  color: var(--cyber-red);
+  display: block;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.toast-alert__actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.toast-alert__btn {
+  border: none;
+  padding: 5px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: var(--font-stack);
+  font-weight: bold;
+  background: #333;
+  color: #fff;
+  transition: background 0.2s;
+}
+
+.toast-alert__btn:hover {
+  background: #444;
+}
+
+.toast-alert__btn--confirm {
+  background: var(--cyber-red);
+  color: #fff;
+}
+
+.toast-alert__btn--confirm:hover {
+  background: #d00000;
+  box-shadow: 0 0 10px rgba(255, 26, 26, 0.4);
+}
+
+.toast-custom-border {
+  border: 1px solid var(--cyber-red) !important;
+  background: #0a0a0a !important;
+  color: #fff !important;
+}

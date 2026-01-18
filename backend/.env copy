@@ -1,0 +1,13 @@
+PORT=5000
+NODE_ENV=development
+
+
+DB_USER=postgres
+DB_PASSWORD=your db password
+DB_HOST=localhost
+DB_NAME=phishing_lab_db
+DB_PORT=5432
+
+# Security
+JWT_SECRET=super_secret_unified_key_2026
+CORS_ORIGIN=http://localhost:5173
