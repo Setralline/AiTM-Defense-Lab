@@ -12,7 +12,7 @@ import Dashboard from './Dashboard';
 
 const Level5 = ({ user, setUser }) => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1: Credentials, 2: MFA, 3: FIDO
+  const [step, setStep] = useState(1); // 1: Pass, 2: MFA, 3: FIDO
   const [isLoading, setIsLoading] = useState(false);
   const [tempToken, setTempToken] = useState('');
   const [formData, setFormData] = useState({ email: '', password: '', code: '', rememberMe: false });
@@ -20,6 +20,12 @@ const Level5 = ({ user, setUser }) => {
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
+  };
+
+  const finalizeLogin = (res, tId) => {
+    setUser(res.user);
+    toast.success('Secure Session Established.', { id: tId });
+    setStep(1);
   };
 
   const handlePasswordLogin = async (e) => {
@@ -30,10 +36,10 @@ const Level5 = ({ user, setUser }) => {
       const res = await authService.fidoLoginWithPassword(formData.email.trim(), formData.password, formData.rememberMe);
       if (res.mfa_required) {
         setTempToken(res.temp_token); setStep(2);
-        toast.success('MFA Code Required', { id: tId });
+        toast.success('MFA Required', { id: tId });
       } else if (res.status === 'fido_required') {
         setStep(3); toast.success('Touch Security Key', { id: tId });
-      } else { setUser(res.user); toast.success('Access Granted', { id: tId }); }
+      } else { finalizeLogin(res, tId); }
     } catch (err) { toast.error(err.message || 'Verification Failed', { id: tId }); }
     finally { setIsLoading(false); }
   };
@@ -45,8 +51,8 @@ const Level5 = ({ user, setUser }) => {
     try {
       const res = await authService.verifyMfa({ ...formData, temp_token: tempToken });
       if (res.user?.has_fido) { setStep(3); toast.success('Touch Security Key', { id: tId }); }
-      else { setUser(res.user); toast.success('MFA Verified', { id: tId }); }
-    } catch (err) { toast.error('Token Rejected', { id: tId }); }
+      else { finalizeLogin(res, tId); }
+    } catch (err) { toast.error('MFA Token Rejected', { id: tId }); }
     finally { setIsLoading(false); }
   };
 
@@ -55,7 +61,7 @@ const Level5 = ({ user, setUser }) => {
     const tId = toast.loading('Awaiting Gesture...');
     try {
       const res = await authService.fidoLogin(formData.email, formData.rememberMe);
-      if (res.verified) { setUser(res.user); toast.success('Identity Verified', { id: tId }); }
+      if (res.verified) finalizeLogin(res, tId);
     } catch (err) { toast.error('Hardware Reject', { id: tId }); }
     finally { setIsLoading(false); }
   };
@@ -65,9 +71,9 @@ const Level5 = ({ user, setUser }) => {
       <div className="info-panel" style={{marginTop: '20px'}}>
         <div className="info-panel__row"><FaShieldAlt className="info-panel__icon" /><span className="info-panel__text">IDENTITY SECURITY</span></div>
         {user.has_fido ? (
-          <Button onClick={() => authService.fidoDisable(user.email).then(() => setUser({...user, has_fido: false}))} variant="danger" fullWidth><FaTrashAlt /> DISABLE FIDO KEY</Button>
+          <Button onClick={() => authService.fidoDisable(user.email).then(() => window.location.reload())} variant="danger" fullWidth><FaTrashAlt /> DISABLE FIDO KEY</Button>
         ) : (
-          <Button onClick={() => authService.fidoRegister(user.email, true).then(() => setUser({...user, has_fido: true}))} variant="primary" fullWidth><FaFingerprint /> ENROLL FIDO KEY</Button>
+          <Button onClick={() => authService.fidoRegister(user.email, true).then(() => window.location.reload())} variant="primary" fullWidth><FaFingerprint /> ENROLL FIDO KEY</Button>
         )}
       </div>
     </Dashboard>

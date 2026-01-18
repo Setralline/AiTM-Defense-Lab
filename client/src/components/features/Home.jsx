@@ -5,20 +5,18 @@ import Card from '../layout/Card';
 import Button from '../ui/Button';
 
 /**
- * Home Component
- * Logic: Mission selection gateway.
- * Style: Balanced cyber-grid with BEM.
+ * Home Component: Mission selection gateway.
  */
-const Home = () => {
+const Home = ({ user }) => {
   const navigate = useNavigate();
 
   return (
     <Card title="SELECT MISSION" footer="UNAUTHORIZED ACCESS PROHIBITED">
       <div className="home-grid">
         <p className="home-desc">
-          Select a target environment to analyze authentication vulnerabilities and defense mechanisms.
+          Analyze authentication vulnerabilities across multiple security layers.
         </p>
-
+        
         <Button variant="primary" fullWidth onClick={() => navigate('/level1')}>
           <FaCookieBite size={18} /> LEVEL 1: COOKIES (LEGACY)
         </Button>
@@ -34,18 +32,19 @@ const Home = () => {
         <Button variant="secondary" fullWidth onClick={() => navigate('/level4')}>
           <FaGlobe size={18} /> LEVEL 4: CLIENT DEFENSE
         </Button>
-        
-        <Button
-          variant="secondary"
-          fullWidth
+
+        {/* ✅ FIXED: Using BEM modifier for style and perfect icon fit */}
+        <Button 
+          variant="secondary" 
+          fullWidth 
           onClick={() => navigate('/level5')}
           className="btn--secure-gold"
         >
-          <FaFingerprint size={18} /> LEVEL 5: FIDO2 (PHISHING PROOF)
+          <FaFingerprint size={18} /> LEVEL 5: FIDO2 (SECURE)
         </Button>
 
         <div className="home-footer-decor">
-          <FaSkullCrossbones className="footer-icon" />
+          <FaSkullCrossbones className="footer-icon" /> 
           PHISHING LAB INITIALIZED
         </div>
       </div>
