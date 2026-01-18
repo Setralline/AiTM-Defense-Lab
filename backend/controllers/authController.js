@@ -1,133 +1,80 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const pool = require('../config/db');
+const config = require('../config/env');
+const User = require('../models/User');
 
-// ✅ FIX: Ensure consistency with fidoController secret
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_123';
+// Helper to standardise token generation
+const generateToken = (user) => {
+  return jwt.sign(
+    { id: user.id, userId: user.id, email: user.email, isAdmin: user.is_admin },
+    config.security.jwtSecret,
+    { expiresIn: config.security.jwtExpiresIn }
+  );
+};
 
-/**
- * Admin Login: Database Driven
- */
 exports.adminLogin = async (req, res) => {
   const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required' });
-  }
+  if (!email || !password) return res.status(400).json({ message: 'Credentials required' });
 
   try {
-    const result = await pool.query(
-      'SELECT * FROM users WHERE email = $1 AND is_admin = TRUE', 
-      [email.toLowerCase().trim()]
-    );
+    const user = await User.findByEmail(email);
     
-    const admin = result.rows[0];
-
-    if (!admin) {
-      return res.status(401).json({ success: false, message: 'Access denied: Admin privileges required' });
+    if (!user || !user.is_admin) {
+      return res.status(401).json({ message: 'Access Denied: Admin only' });
     }
 
-    const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid administrative credentials' });
-    }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
 
-    // Generate Token for Admin
-    const token = jwt.sign({ id: admin.id, isAdmin: true }, JWT_SECRET, { expiresIn: '1h' });
-
-    res.json({ 
-      success: true, 
-      message: 'Administrative session initialized',
-      token, // Return token for persistence
-      user: { id: admin.id, name: admin.name, email: admin.email }
-    });
+    const token = generateToken(user);
+    res.json({ success: true, token, user: { id: user.id, name: user.name, email: user.email } });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error during administrative login' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * Validates any operative session
- * ✅ FIX: Uses the unified JWT_SECRET to validate tokens from FIDO/Level2
- */
 exports.getCurrentUser = async (req, res) => {
   try {
-    let token;
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1] || req.cookies?.session_id;
 
-    if (req.headers.authorization?.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    } 
-    else if (req.cookies?.session_id) {
-      token = req.cookies.session_id;
-    }
+    if (!token) return res.status(401).json({ message: 'No session token' });
 
-    if (!token) {
-      return res.status(401).json({ message: 'Authentication required' });
-    }
+    const decoded = jwt.verify(token, config.security.jwtSecret);
+    const userId = decoded.id || decoded.userId;
 
-    // Verify using the unified secret
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Support both 'id' (legacy) and 'userId' (FIDO) payload keys
-    const targetId = decoded.id || decoded.userId;
-
-    const result = await pool.query(
-      'SELECT id, name, email, mfa_secret, has_fido, is_admin FROM users WHERE id = $1', 
-      [targetId]
-    );
-    
-    const user = result.rows[0];
-
-    if (!user) {
-      return res.status(404).json({ message: 'Account no longer exists' });
-    }
+    // Sanitize
+    delete user.password;
+    delete user.current_challenge;
 
     res.json({ success: true, user });
-
   } catch (err) {
-    // This implies the token signature didn't match our secret
-    res.status(401).json({ message: 'Session has expired or is invalid' });
+    res.status(401).json({ message: 'Session expired or invalid' });
   }
 };
 
+// ... (CRUD functions follow same pattern using User model)
 exports.listUsers = async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT id, name, email, mfa_secret, has_fido, is_admin FROM users ORDER BY id DESC'
-    );
-    res.json({ success: true, users: result.rows });
-  } catch (err) {
-    res.status(500).json({ message: 'System error' });
-  }
+  const pool = require('../config/db'); // Temporary direct access for bulk list
+  const result = await pool.query('SELECT id, name, email, has_fido, is_admin FROM users ORDER BY id DESC');
+  res.json({ users: result.rows });
 };
 
 exports.createUser = async (req, res) => {
-  const { name, email, password, isAdmin } = req.body;
-  if (!name || !email || !password) return res.status(400).json({ message: 'Missing fields' });
-
   try {
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const result = await pool.query(
-      'INSERT INTO users (name, email, password, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, name, email, is_admin',
-      [name, email.toLowerCase().trim(), hashedPassword, isAdmin || false]
-    );
-
-    res.status(201).json({ success: true, user: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ message: 'Database failure' });
-  }
+    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+    const user = await User.create({ ...req.body, password: hashedPassword });
+    res.status(201).json({ success: true, user });
+  } catch (err) { res.status(500).json({ message: 'Creation failed' }); }
 };
 
 exports.deleteUser = async (req, res) => {
-  const { id } = req.params;
-  try {
-    await pool.query('DELETE FROM users WHERE id = $1', [id]);
-    res.json({ success: true, message: 'Deleted' });
-  } catch (err) {
-    res.status(500).json({ message: 'Error deleting user' });
-  }
+  const pool = require('../config/db');
+  await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
+  res.json({ success: true });
 };
