@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import authService from './services/authService';
 import { toasterOptions } from './utils/themeStyles';
+import { printDeveloperSignature } from './utils/signature';
 
 import Home from './pages/Home';
 import AdminPanel from './pages/AdminPanel';
@@ -17,7 +18,12 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // GLOBAL SESSION RECOVERY
+  // 1. My SIGNATURE
+  useEffect(() => {
+    printDeveloperSignature();
+  }, []);
+
+  // 2. GLOBAL SESSION RECOVERY
   useEffect(() => {
     const recoverSession = async () => {
       const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
