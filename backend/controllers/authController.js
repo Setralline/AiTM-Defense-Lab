@@ -2,9 +2,11 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const pool = require('../config/db');
 
+// ✅ FIX: Ensure consistency with fidoController secret
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_123';
+
 /**
  * Admin Login: Database Driven
- * Authenticates users who have the 'is_admin' flag set to true in PostgreSQL.
  */
 exports.adminLogin = async (req, res) => {
   const { email, password } = req.body;
@@ -14,7 +16,6 @@ exports.adminLogin = async (req, res) => {
   }
 
   try {
-    // Look for the user and verify they have administrative privileges
     const result = await pool.query(
       'SELECT * FROM users WHERE email = $1 AND is_admin = TRUE', 
       [email.toLowerCase().trim()]
@@ -26,16 +27,18 @@ exports.adminLogin = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Access denied: Admin privileges required' });
     }
 
-    // Verify password against stored hash
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid administrative credentials' });
     }
 
-    // For lab simplicity, we return success. In production, issue a specific JWT here.
+    // Generate Token for Admin
+    const token = jwt.sign({ id: admin.id, isAdmin: true }, JWT_SECRET, { expiresIn: '1h' });
+
     res.json({ 
       success: true, 
       message: 'Administrative session initialized',
+      token, // Return token for persistence
       user: { id: admin.id, name: admin.name, email: admin.email }
     });
 
@@ -46,7 +49,8 @@ exports.adminLogin = async (req, res) => {
 };
 
 /**
- * Validates any operative session (Level 1 or Level 2)
+ * Validates any operative session
+ * ✅ FIX: Uses the unified JWT_SECRET to validate tokens from FIDO/Level2
  */
 exports.getCurrentUser = async (req, res) => {
   try {
@@ -63,11 +67,15 @@ exports.getCurrentUser = async (req, res) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Verify using the unified secret
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    // Support both 'id' (legacy) and 'userId' (FIDO) payload keys
+    const targetId = decoded.id || decoded.userId;
 
     const result = await pool.query(
-      'SELECT id, name, email, mfa_secret, is_admin FROM users WHERE id = $1', 
-      [decoded.id]
+      'SELECT id, name, email, mfa_secret, has_fido, is_admin FROM users WHERE id = $1', 
+      [targetId]
     );
     
     const user = result.rows[0];
@@ -79,34 +87,25 @@ exports.getCurrentUser = async (req, res) => {
     res.json({ success: true, user });
 
   } catch (err) {
+    // This implies the token signature didn't match our secret
     res.status(401).json({ message: 'Session has expired or is invalid' });
   }
 };
 
-/**
- * Admin: Retrieve all registered operatives
- */
 exports.listUsers = async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, name, email, mfa_secret, is_admin FROM users ORDER BY id DESC'
+      'SELECT id, name, email, mfa_secret, has_fido, is_admin FROM users ORDER BY id DESC'
     );
     res.json({ success: true, users: result.rows });
   } catch (err) {
-    res.status(500).json({ message: 'System error: Unable to fetch operative list' });
+    res.status(500).json({ message: 'System error' });
   }
 };
 
-/**
- * Admin: Provision a new account (Operative or Admin)
- * Now supports the 'isAdmin' flag to grant privileges via code.
- */
 exports.createUser = async (req, res) => {
   const { name, email, password, isAdmin } = req.body;
-
-  if (!name || !email || !password) {
-    return res.status(400).json({ message: 'Provisioning failed: Missing fields' });
-  }
+  if (!name || !email || !password) return res.status(400).json({ message: 'Missing fields' });
 
   try {
     const salt = await bcrypt.genSalt(10);
@@ -117,34 +116,18 @@ exports.createUser = async (req, res) => {
       [name, email.toLowerCase().trim(), hashedPassword, isAdmin || false]
     );
 
-    res.status(201).json({ 
-      success: true, 
-      message: isAdmin ? 'Administrator created' : 'Operative created',
-      user: result.rows[0] 
-    });
+    res.status(201).json({ success: true, user: result.rows[0] });
   } catch (err) {
-    if (err.code === '23505') {
-      return res.status(400).json({ message: 'Conflict: Email already registered' });
-    }
-    res.status(500).json({ message: 'Database failure during account creation' });
+    res.status(500).json({ message: 'Database failure' });
   }
 };
 
-/**
- * Admin: Permanent removal of a user account
- */
 exports.deleteUser = async (req, res) => {
   const { id } = req.params;
-
   try {
-    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
-    
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: 'Target not found' });
-    }
-
-    res.json({ success: true, message: 'Access terminated and account purged' });
+    await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    res.json({ success: true, message: 'Deleted' });
   } catch (err) {
-    res.status(500).json({ message: 'System error: Termination failed' });
+    res.status(500).json({ message: 'Error deleting user' });
   }
 };

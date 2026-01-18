@@ -1,7 +1,5 @@
 /**
- * ------------------------------------------------------------------
- * FIDO2 / WEBAUTHN CONTROLLER - PHISHING DEFENSE LAB (v13 READY)
- * ------------------------------------------------------------------
+ * FIDO2 / WEBAUTHN CONTROLLER (Fixed Session Persistence)
  */
 const { 
   generateRegistrationOptions, 
@@ -9,22 +7,14 @@ const {
   generateAuthenticationOptions, 
   verifyAuthenticationResponse 
 } = require('@simplewebauthn/server');
-const fs = require('fs');
-const path = require('path');
 const pool = require('../config/db');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 const RP_ID = 'localhost'; 
 const EXPECTED_ORIGIN = 'http://localhost:5173'; 
+// ✅ Unified Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_123';
-
-const logSecurityEvent = (message) => {
-    const logPath = path.join(__dirname, '../reportfid.txt');
-    const timestamp = new Date().toISOString();
-    fs.appendFileSync(logPath, `[${timestamp}] ${message}\n`);
-    console.log(`[FIDO_AUDIT]: ${message}`);
-};
 
 let isoBase64URL;
 try {
@@ -43,12 +33,15 @@ const fidoController = {
       const user = result.rows[0];
 
       if (!user) {
+        // Auto-create for lab convenience
         const hashed = await bcrypt.hash(password, 10);
         const newUser = await pool.query(
           "INSERT INTO users (name, email, password) VALUES ('Operative', $1, $2) RETURNING *",
           [email, hashed]
         );
-        return res.json({ status: 'success', user: newUser.rows[0] });
+        // Create initial token for the new user
+        const token = jwt.sign({ userId: newUser.rows[0].id, email }, JWT_SECRET, { expiresIn: '1h' });
+        return res.json({ status: 'success', token, user: newUser.rows[0] });
       }
 
       const isMatch = await bcrypt.compare(password, user.password);
@@ -58,6 +51,7 @@ const fidoController = {
         return res.json({ status: 'fido_required', email: user.email });
       }
 
+      // Standard Login Token
       const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
       res.json({ status: 'success', token, user });
     } catch (err) { res.status(500).json({ message: 'Server Error' }); }
@@ -99,15 +93,9 @@ const fidoController = {
 
         if (verification.verified) {
             const { registrationInfo } = verification;
-            // ✅ في الإصدار 13، المفتاح موجود داخل registrationInfo.credential.publicKey
             const { credential } = registrationInfo;
-            
-            // تحويل المفتاح العام الثنائي إلى نص Base64URL نظيف
             const b64PublicKey = isoBase64URL.fromBuffer(credential.publicKey);
             
-            // التأكد من أن النص ليس فارغاً قبل الحفظ
-            if (!b64PublicKey) throw new Error("Failed to encode Public Key to Base64URL");
-
             await pool.query(
                 `INSERT INTO authenticators (credential_id, credential_public_key, counter, transports, user_id)
                  VALUES ($1, $2, $3, $4, $5) ON CONFLICT (credential_id) DO UPDATE SET credential_public_key = $2`,
@@ -115,14 +103,16 @@ const fidoController = {
             );
 
             await pool.query('UPDATE users SET has_fido = TRUE, current_challenge = NULL WHERE id = $1', [user.id]);
-            logSecurityEvent(`[REG-SUCCESS] Key enrolled for ${email}`);
-            res.json({ verified: true });
+            
+            // ✅ FIX: Generate and return JWT so the user remains logged in after reload
+            const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
+            
+            res.json({ verified: true, token, user });
         }
     } catch (err) {
-        console.error("Registration Save Error:", err);
         res.status(500).json({ error: err.message });
     }
-},
+  },
 
   // PHASE 3: AUTHENTICATION
   loginStart: async (req, res) => {
@@ -149,7 +139,7 @@ const fidoController = {
     } catch (err) { res.status(500).json({ error: err.message }); }
   },
 
-loginFinish: async (req, res) => {
+  loginFinish: async (req, res) => {
     const { email, data } = req.body;
     try {
         const userRes = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
@@ -158,16 +148,12 @@ loginFinish: async (req, res) => {
         const keyRes = await pool.query('SELECT * FROM authenticators WHERE credential_id = $1', [data.id]);
         const passkey = keyRes.rows[0];
 
-        if (!passkey || !passkey.credential_public_key) {
-            return res.status(400).json({ error: 'Key data missing in DB' });
-        }
+        if (!passkey) return res.status(400).json({ error: 'Key not found' });
 
-        // ✅ تحويل قوي: نستخدم Buffer.from إذا فشل isoBase64URL
         let publicKeyBuffer;
         try {
             publicKeyBuffer = isoBase64URL.toBuffer(passkey.credential_public_key);
         } catch (e) {
-            // محاولة بديلة في حال كان التنسيق Base64 عادي وليس Base64URL
             publicKeyBuffer = Buffer.from(passkey.credential_public_key, 'base64');
         }
 
@@ -187,14 +173,14 @@ loginFinish: async (req, res) => {
             await pool.query('UPDATE authenticators SET counter = $1 WHERE credential_id = $2', 
                 [verification.authenticationInfo.newCounter, passkey.credential_id]);
             
+            // Generate Token
             const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
             res.json({ verified: true, token, user });
         }
     } catch (error) {
-        console.error("🔥 Final Verification Error:", error.message);
         res.status(400).json({ error: error.message });
     }
-},
+  },
 
   disableKey: async (req, res) => {
     const { email } = req.body;

@@ -354,7 +354,9 @@ input:-webkit-autofill:active {
   border-bottom: 1px solid #1a1a1a;
 }
 
-.user-item--admin { background: rgba(255, 26, 26, 0.05); }
+.user-item--admin {
+  background: rgba(255, 26, 26, 0.05); /* Red tint for admins */
+}
 
 .user-item__info h4 {
   margin: 0;
@@ -403,12 +405,12 @@ input:-webkit-autofill:active {
 
 /* Dashboard Info Panel */
 .info-panel {
-  background: #000;
+  background: #000; /* Darker than card for contrast */
   border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 20px;
   margin-bottom: 20px;
-  position: relative;
+  position: relative; /* For badge positioning */
   overflow: hidden;
 }
 
@@ -421,7 +423,9 @@ input:-webkit-autofill:active {
   font-size: 14px;
 }
 
-.info-panel__row:last-child { margin-bottom: 0; }
+.info-panel__row:last-child {
+  margin-bottom: 0;
+}
 
 .info-panel__icon {
   color: var(--cyber-red);
@@ -431,9 +435,11 @@ input:-webkit-autofill:active {
   text-align: center;
 }
 
-.info-panel__text { letter-spacing: 1px; }
+.info-panel__text {
+  letter-spacing: 1px;
+}
 
-/* Dashboard Status & Badges */
+/* Badge Element */
 .clearance-badge {
   position: absolute;
   top: 0;
@@ -445,17 +451,28 @@ input:-webkit-autofill:active {
   color: #fff;
 }
 
-.clearance-badge--secure { background: var(--cyber-green); }
-.clearance-badge--restricted { background: #333; }
+.clearance-badge--secure {
+  background: var(--cyber-green);
+}
 
+.clearance-badge--restricted {
+  background: #333;
+}
+
+/* Status Colors */
 .info-panel__status {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.info-panel__status--secure { color: var(--cyber-green); }
-.info-panel__status--warning { color: var(--cyber-red); }
+.info-panel__status--secure {
+  color: var(--cyber-green);
+}
+
+.info-panel__status--warning {
+  color: var(--cyber-red);
+}
 
 /* QR Container */
 .qr-container {
@@ -480,8 +497,13 @@ input:-webkit-autofill:active {
   display: block;
 }
 
+/* Utility Helper */
+.btn--mt {
+  margin-top: 10px;
+}
+
 /* =========================================
-   12. BLOCK: TOAST ALERTS
+   12. BLOCK: TOAST ALERTS (Custom)
    ========================================= */
 .toast-alert {
   text-align: center;
@@ -516,8 +538,14 @@ input:-webkit-autofill:active {
   transition: background 0.2s;
 }
 
-.toast-alert__btn:hover { background: #444; }
-.toast-alert__btn--confirm { background: var(--cyber-red); }
+.toast-alert__btn:hover {
+  background: #444;
+}
+
+.toast-alert__btn--confirm {
+  background: var(--cyber-red);
+  color: #fff;
+}
 
 .toast-alert__btn--confirm:hover {
   background: #d00000;

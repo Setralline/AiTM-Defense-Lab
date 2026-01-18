@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FaFingerprint, FaShieldAlt, FaUserAstronaut, FaKey, FaArrowLeft, FaTrashAlt } from 'react-icons/fa';
+import { FaFingerprint, FaKey, FaArrowLeft, FaShieldAlt, FaUserAstronaut, FaTrashAlt } from 'react-icons/fa';
 import authService from '../../services/authService';
 
 import Card from '../layout/Card';
@@ -12,7 +12,7 @@ import Dashboard from './Dashboard';
 
 const Level5 = ({ user, setUser }) => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1: Pass, 2: MFA, 3: FIDO
+  const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [tempToken, setTempToken] = useState('');
   const [formData, setFormData] = useState({ email: '', password: '', code: '', rememberMe: false });
@@ -24,7 +24,7 @@ const Level5 = ({ user, setUser }) => {
 
   const finalizeLogin = (res, tId) => {
     setUser(res.user);
-    toast.success('Secure Session Established.', { id: tId });
+    toast.success('Secure Identity Verified.', { id: tId });
     setStep(1);
   };
 
@@ -36,11 +36,11 @@ const Level5 = ({ user, setUser }) => {
       const res = await authService.fidoLoginWithPassword(formData.email.trim(), formData.password, formData.rememberMe);
       if (res.mfa_required) {
         setTempToken(res.temp_token); setStep(2);
-        toast.success('MFA Required', { id: tId });
+        toast.success('MFA Code Required', { id: tId });
       } else if (res.status === 'fido_required') {
         setStep(3); toast.success('Touch Security Key', { id: tId });
       } else { finalizeLogin(res, tId); }
-    } catch (err) { toast.error(err.message || 'Verification Failed', { id: tId }); }
+    } catch (err) { toast.error(err.message || 'Access Denied', { id: tId }); }
     finally { setIsLoading(false); }
   };
 
@@ -52,17 +52,17 @@ const Level5 = ({ user, setUser }) => {
       const res = await authService.verifyMfa({ ...formData, temp_token: tempToken });
       if (res.user?.has_fido) { setStep(3); toast.success('Touch Security Key', { id: tId }); }
       else { finalizeLogin(res, tId); }
-    } catch (err) { toast.error('MFA Token Rejected', { id: tId }); }
+    } catch (err) { toast.error('MFA Failed', { id: tId }); }
     finally { setIsLoading(false); }
   };
 
   const handleFidoVerify = async () => {
     setIsLoading(true);
-    const tId = toast.loading('Awaiting Gesture...');
+    const tId = toast.loading('Reading Hardware Key...');
     try {
       const res = await authService.fidoLogin(formData.email, formData.rememberMe);
       if (res.verified) finalizeLogin(res, tId);
-    } catch (err) { toast.error('Hardware Reject', { id: tId }); }
+    } catch (err) { toast.error('Key Rejected', { id: tId }); }
     finally { setIsLoading(false); }
   };
 
@@ -88,7 +88,7 @@ const Level5 = ({ user, setUser }) => {
             <Checkbox label="Stay Persistent (1 Year)" name="rememberMe" checked={formData.rememberMe} onChange={handleChange} /></>
         )}
         {step === 2 && <InputGroup icon={<FaShieldAlt />} type="text" name="code" placeholder="6-Digit Token" onChange={handleChange} maxLength={6} highlight autoFocus required />}
-        {step === 3 && <div className="animate-fade-in" style={{textAlign: 'center'}}><FaShieldAlt style={{ fontSize: '2.5rem', marginBottom: '10px', color: 'var(--cyber-green)' }} /><p className="home-desc">Waiting for cryptographic gesture...</p></div>}
+        {step === 3 && <div className="animate-fade-in" style={{textAlign: 'center'}}><FaShieldAlt style={{ fontSize: '2.5rem', marginBottom: '10px', color: 'var(--cyber-green)' }} /><p className="home-desc">Authentication hardware required.</p></div>}
         <div className="form-actions">
           {step < 3 ? <Button type="submit" disabled={isLoading} fullWidth>{isLoading ? 'PROCESSING...' : 'INITIATE'}</Button> : <Button type="button" onClick={handleFidoVerify} variant="primary" fullWidth>TOUCH KEY</Button>}
           <Button type="button" variant="secondary" onClick={() => step === 1 ? navigate('/') : setStep(1)} fullWidth><FaArrowLeft /> BACK</Button>
