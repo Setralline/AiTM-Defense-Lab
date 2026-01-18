@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FaGlobe, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa'; // Icon changed to Globe
+import { FaGlobe, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa';
 import authService from '../../services/authService';
 
 // UI Components (BEM Architecture)
@@ -13,15 +13,23 @@ import Dashboard from './Dashboard';
 import DomainGuard from '../defenses/DomainGuard'; // <--- The Client-Side Defense
 
 /**
- * Level 4 Component: Client-Side Defense (Domain Guard)
- * Visually identical to Level 2 & 3, but includes an active JavaScript
- * check (DomainGuard) that "kills" the page if the domain is mismatched.
+ * ------------------------------------------------------------------
+ * LEVEL 4: CLIENT-SIDE DEFENSE (DOMAIN GUARD)
+ * ------------------------------------------------------------------
+ * Visually identical to Level 2 (SPA/JWT), but includes an active 
+ * JavaScript check (DomainGuard) that inspects the browser's URL bar.
+ * * * Security Characteristics:
+ * - Defense: Client-Side JavaScript (DOM-based detection)
+ * - Mechanism: "Kills" the page/redirects if window.location.hostname != whitelist.
+ * - Persistence: Handled via centralized authService.
  */
 const Level4 = ({ user, setUser }) => {
   const navigate = useNavigate();
   
-  // State Management
-  const [step, setStep] = useState(1);
+  // =========================================================================
+  // STATE MANAGEMENT
+  // =========================================================================
+  const [step, setStep] = useState(1); // 1: Credentials, 2: MFA
   const [isLoading, setIsLoading] = useState(false);
   const [tempToken, setTempToken] = useState('');
   const [formData, setFormData] = useState({ 
@@ -31,26 +39,48 @@ const Level4 = ({ user, setUser }) => {
     rememberMe: false 
   });
 
-  // 1. Session Validation
+  // =========================================================================
+  // 1. SESSION SYNCHRONIZATION
+  // =========================================================================
   useEffect(() => {
+    let isMounted = true;
     const checkSession = async () => {
       try {
         const data = await authService.getCurrentUser();
-        if (data.user) setUser(data.user);
+        if (isMounted && data.user) setUser(data.user);
       } catch (err) {
         // Silent catch
       }
     };
     checkSession();
+    return () => { isMounted = false; };
   }, [setUser]);
 
-  // 2. Input Handler
+  // =========================================================================
+  // 2. HANDLERS & LOGIC
+  // =========================================================================
+
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
   };
 
-  // 3. Authentication Logic
+  /**
+   * Updates local state upon successful authentication.
+   * Defined BEFORE usage to prevent ReferenceErrors.
+   */
+  const finalizeLogin = (res, tId) => {
+    // Auth logic is handled by the service. We just update the UI.
+    const { user: userData } = res;
+    setUser(userData);
+    toast.success(`Welcome back, ${userData.name}`, { id: tId });
+  };
+
+  /**
+   * Main Login Flow
+   * Relies on the standard 'v2' endpoint, as the defense is handled 
+   * entirely by the <DomainGuard /> component in the DOM.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -58,12 +88,16 @@ const Level4 = ({ user, setUser }) => {
 
     try {
       if (step === 1) {
-        // Step A: Initial Credential Exchange
-        // Uses 'v2' endpoint (Vulnerable Backend) because defense is purely Client-Side
+        // ---------------------------------------------------
+        // STEP A: CREDENTIAL EXCHANGE
+        // ---------------------------------------------------
+        // Uses 'v2' because the backend defense is not active here.
+        // The protection is the <DomainGuard /> component below.
         const res = await authService.loginModern(
           formData.email.trim(),
           formData.password,
-          'v2' 
+          'v2', 
+          formData.rememberMe
         );
 
         if (res.mfa_required) {
@@ -74,34 +108,23 @@ const Level4 = ({ user, setUser }) => {
           finalizeLogin(res, tId);
         }
       } else {
-        // Step B: MFA Verification
+        // ---------------------------------------------------
+        // STEP B: MFA VERIFICATION
+        // ---------------------------------------------------
         const res = await authService.verifyMfa({
           email: formData.email.trim(),
           code: formData.code.trim(),
-          temp_token: tempToken
+          temp_token: tempToken,
+          rememberMe: formData.rememberMe
         });
         
         if (res.success) finalizeLogin(res, tId);
       }
     } catch (err) {
-      toast.error(err.message || 'Login Failed.', { id: tId });
+      toast.error(err.response?.data?.message || 'Login Failed.', { id: tId });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const finalizeLogin = (res, tId) => {
-    const { token, user: userData } = res;
-    
-    const storage = formData.rememberMe ? localStorage : sessionStorage;
-    
-    localStorage.removeItem('auth_token');
-    sessionStorage.removeItem('auth_token');
-    
-    if (token) storage.setItem('auth_token', token);
-    
-    setUser(userData);
-    toast.success(`Welcome back, ${userData.name}`, { id: tId });
   };
 
   const handleLogout = async () => {
@@ -118,11 +141,15 @@ const Level4 = ({ user, setUser }) => {
     }
   };
 
+  // =========================================================================
+  // 3. UI RENDERING
+  // =========================================================================
+
   if (user) return <Dashboard user={user} setUser={setUser} onLogout={handleLogout} />;
 
   return (
     <>
-      {/* 🛡️ ACTIVE DEFENSE: Runs silently in background */}
+      {/* 🛡️ ACTIVE DEFENSE: Runs silently in background checking window.location */}
       <DomainGuard />
 
       <Card title={step === 1 ? "DOMAIN GUARD AUTH" : "2-FACTOR AUTH"}>

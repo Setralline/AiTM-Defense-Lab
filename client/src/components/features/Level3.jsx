@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FaUserShield, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa'; // Changed Icon to UserShield
+import { FaUserShield, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa';
 import authService from '../../services/authService';
 
 // UI Components (BEM Architecture)
@@ -12,15 +12,24 @@ import Checkbox from '../ui/Checkbox';
 import Dashboard from './Dashboard';
 
 /**
- * Level 3 Component: Server-Side Defense (Header Analysis)
- * Structurally identical to Level 2 (SPA/JWT) but targets a protected endpoint
- * that inspects HTTP headers for proxy anomalies.
+ * ------------------------------------------------------------------
+ * LEVEL 3: SERVER-SIDE DEFENSE (HEADER ANALYSIS)
+ * ------------------------------------------------------------------
+ * Structurally identical to Level 2 (SPA/JWT) regarding the frontend flow,
+ * but targets a specific backend endpoint ('v3') that enforces strict 
+ * Host Header analysis to detect and block Reverse Proxy anomalies.
+ * * * Security Characteristics:
+ * - Transmission: application/json
+ * - Defense: Server-side Middleware (detectProxy.js)
+ * - Persistence: Handled via centralized authService.
  */
 const Level3 = ({ user, setUser }) => {
   const navigate = useNavigate();
   
-  // State Management (Identical to Level 2)
-  const [step, setStep] = useState(1);
+  // =========================================================================
+  // STATE MANAGEMENT
+  // =========================================================================
+  const [step, setStep] = useState(1); // 1: Credentials, 2: MFA
   const [isLoading, setIsLoading] = useState(false);
   const [tempToken, setTempToken] = useState('');
   const [formData, setFormData] = useState({ 
@@ -30,26 +39,47 @@ const Level3 = ({ user, setUser }) => {
     rememberMe: false 
   });
 
-  // 1. Session Validation
+  // =========================================================================
+  // 1. SESSION SYNCHRONIZATION
+  // =========================================================================
   useEffect(() => {
+    let isMounted = true;
     const checkSession = async () => {
       try {
         const data = await authService.getCurrentUser();
-        if (data.user) setUser(data.user);
+        if (isMounted && data.user) setUser(data.user);
       } catch (err) {
-        // Silent catch
+        // Silent failure expected
       }
     };
     checkSession();
+    return () => { isMounted = false; };
   }, [setUser]);
 
-  // 2. Input Handler
+  // =========================================================================
+  // 2. HANDLERS & LOGIC
+  // =========================================================================
+
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
   };
 
-  // 3. Authentication Logic
+  /**
+   * Updates local state upon successful authentication.
+   * Defined BEFORE usage to prevent ReferenceErrors.
+   */
+  const finalizeLogin = (res, tId) => {
+    // Auth logic is handled by the service. We just update the UI.
+    const { user: userData } = res;
+    setUser(userData);
+    toast.success(`Secure Connection Established. Welcome, ${userData.name}`, { id: tId });
+  };
+
+  /**
+   * Main Login Flow
+   * Targets the 'v3' endpoint which includes the Proxy Detection Middleware.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -57,12 +87,14 @@ const Level3 = ({ user, setUser }) => {
 
     try {
       if (step === 1) {
-        // Step A: Initial Credential Exchange
-        // CRITICAL CHANGE: passing 'v3' to target the protected endpoint
+        // ---------------------------------------------------
+        // STEP A: CREDENTIALS (TARGETING V3 ENDPOINT)
+        // ---------------------------------------------------
         const res = await authService.loginModern(
           formData.email.trim(),
           formData.password,
-          'v3' 
+          'v3', // <--- Critical: Targets /auth/level3 (Protected Endpoint)
+          formData.rememberMe
         );
 
         if (res.mfa_required) {
@@ -73,35 +105,24 @@ const Level3 = ({ user, setUser }) => {
           finalizeLogin(res, tId);
         }
       } else {
-        // Step B: MFA Verification
+        // ---------------------------------------------------
+        // STEP B: MFA VERIFICATION
+        // ---------------------------------------------------
         const res = await authService.verifyMfa({
           email: formData.email.trim(),
           code: formData.code.trim(),
-          temp_token: tempToken
+          temp_token: tempToken,
+          rememberMe: formData.rememberMe
         });
         
         if (res.success) finalizeLogin(res, tId);
       }
     } catch (err) {
-      // If blocked by Lab 3 defense, err.message will contain the security warning
-      toast.error(err.message || 'Access Denied.', { id: tId });
+      // If blocked by Lab 3 defense, err.message will contain the specific security warning
+      toast.error(err.response?.data?.message || 'Access Denied: Potential Proxy Detected.', { id: tId });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const finalizeLogin = (res, tId) => {
-    const { token, user: userData } = res;
-    
-    const storage = formData.rememberMe ? localStorage : sessionStorage;
-    
-    localStorage.removeItem('auth_token');
-    sessionStorage.removeItem('auth_token');
-    
-    if (token) storage.setItem('auth_token', token);
-    
-    setUser(userData);
-    toast.success(`Secure Connection Established. Welcome, ${userData.name}`, { id: tId });
   };
 
   const handleLogout = async () => {
@@ -117,6 +138,10 @@ const Level3 = ({ user, setUser }) => {
       navigate('/level3');
     }
   };
+
+  // =========================================================================
+  // 3. UI RENDERING
+  // =========================================================================
 
   if (user) return <Dashboard user={user} setUser={setUser} onLogout={handleLogout} />;
 

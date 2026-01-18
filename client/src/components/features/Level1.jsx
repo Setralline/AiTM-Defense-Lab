@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { FaUserAstronaut, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa';
 import authService from '../../services/authService';
 
-// UI Components
+// UI Components (BEM Architecture)
 import Card from '../layout/Card';
 import InputGroup from '../ui/InputGroup';
 import Button from '../ui/Button';
@@ -12,16 +12,25 @@ import Checkbox from '../ui/Checkbox';
 import Dashboard from './Dashboard';
 
 /**
- * Level 1 Component: Legacy Authentication Simulation
- * Simulates a traditional web application environment using Cookies and Form Data.
+ * ------------------------------------------------------------------
+ * LEVEL 1: LEGACY AUTHENTICATION SIMULATION
+ * ------------------------------------------------------------------
+ * Simulates a traditional enterprise web application environment.
+ * * Security Characteristics:
+ * - Transmission: application/x-www-form-urlencoded (Legacy standard)
+ * - Storage: HttpOnly Cookies (Browser-managed)
+ * - Defense: Vulnerable to CSRF (if not protected) and Proxy interception.
+ * - Persistence: Controlled by the 'Remember Me' flag affecting Cookie Max-Age.
  */
 const Level1 = ({ user, setUser }) => {
   const navigate = useNavigate();
   
-  // State Management
+  // =========================================================================
+  // STATE MANAGEMENT
+  // =========================================================================
   const [step, setStep] = useState(1); // 1: Credentials, 2: MFA
   const [isLoading, setIsLoading] = useState(false);
-  const [tempToken, setTempToken] = useState('');
+  const [tempToken, setTempToken] = useState(''); // Temporary token for MFA handover
   const [formData, setFormData] = useState({ 
     email: '', 
     password: '', 
@@ -29,26 +38,45 @@ const Level1 = ({ user, setUser }) => {
     rememberMe: false 
   });
 
-  // 1. Session Synchronization
+  // =========================================================================
+  // 1. SESSION SYNCHRONIZATION
+  // =========================================================================
   useEffect(() => {
+    let isMounted = true;
     const checkSession = async () => {
       try {
         const data = await authService.getCurrentUser();
-        if (data.user) setUser(data.user);
+        if (isMounted && data.user) setUser(data.user);
       } catch (err) {
-        // Silent failure expected
+        // Silent failure expected if no session exists
       }
     };
     checkSession();
+    return () => { isMounted = false; };
   }, [setUser]);
 
-  // 2. Input Handler
+  // =========================================================================
+  // 2. HANDLERS & LOGIC
+  // =========================================================================
+
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
   };
 
-  // 3. Auth Logic
+  /**
+   * Updates local state upon successful authentication.
+   * Defined BEFORE usage to prevent ReferenceErrors.
+   */
+  const finalizeLogin = (res, tId) => {
+    setUser(res.user);
+    toast.success(`Access Granted. Welcome, ${res.user.name}`, { id: tId });
+  };
+
+  /**
+   * Main Login Flow
+   * Handles both initial credential exchange and secondary MFA verification.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -56,40 +84,42 @@ const Level1 = ({ user, setUser }) => {
 
     try {
       if (step === 1) {
-        // Legacy Form Data Simulation
+        // ---------------------------------------------------
+        // STEP A: LEGACY FORM SUBMISSION
+        // ---------------------------------------------------
+        // Mimic legacy behavior using URLSearchParams
         const params = new URLSearchParams();
         params.append('email', formData.email.trim());
         params.append('password', formData.password);
-        params.append('rememberMe', formData.rememberMe);
+        params.append('rememberMe', formData.rememberMe); // Backend sets Cookie Max-Age based on this
 
         const res = await authService.loginLevel1(params);
         
         if (res.mfa_required) {
           setTempToken(res.temp_token);
           setStep(2);
-          toast.success('MFA Required.', { id: tId });
+          toast.success('MFA Required. Please check your authenticator.', { id: tId });
         } else {
           finalizeLogin(res, tId);
         }
       } else {
+        // ---------------------------------------------------
+        // STEP B: MFA VERIFICATION
+        // ---------------------------------------------------
         const res = await authService.verifyMfa({ 
           email: formData.email.trim(), 
           code: formData.code.trim(), 
-          temp_token: tempToken 
+          temp_token: tempToken,
+          rememberMe: formData.rememberMe // Ensure MFA flow also respects persistence preference
         });
         
         if (res.success) finalizeLogin(res, tId);
       }
     } catch (err) {
-      toast.error(err.sanitizedMessage || 'Access Denied.', { id: tId });
+      toast.error(err.response?.data?.message || 'Access Denied.', { id: tId });
     } finally { 
       setIsLoading(false); 
     }
-  };
-
-  const finalizeLogin = (res, tId) => {
-    setUser(res.user);
-    toast.success(`Welcome, ${res.user.name}`, { id: tId });
   };
 
   const handleLogout = async () => {
@@ -106,7 +136,11 @@ const Level1 = ({ user, setUser }) => {
     }
   };
 
-  // Render Dashboard if authenticated
+  // =========================================================================
+  // 3. UI RENDERING
+  // =========================================================================
+
+  // If authenticated, show the Dashboard "Victim" View
   if (user) return <Dashboard user={user} setUser={setUser} onLogout={handleLogout} />;
 
   return (
@@ -131,9 +165,9 @@ const Level1 = ({ user, setUser }) => {
               required 
             />
             
-            {/* New BEM Checkbox Component */}
+            {/* Persistence Option */}
             <Checkbox 
-              label="Remember terminal" 
+              label="Remember terminal (Extend Session)" 
               name="rememberMe" 
               checked={formData.rememberMe} 
               onChange={handleChange} 
@@ -152,7 +186,6 @@ const Level1 = ({ user, setUser }) => {
           />
         )}
 
-        {/* BEM Actions Wrapper */}
         <div className="form-actions">
           <Button type="submit" disabled={isLoading} fullWidth>
             {isLoading ? 'PROCESSING...' : (step === 1 ? 'INITIATE' : 'VERIFY')}

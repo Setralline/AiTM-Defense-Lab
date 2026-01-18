@@ -12,17 +12,25 @@ import Checkbox from '../ui/Checkbox';
 import Dashboard from './Dashboard';
 
 /**
- * Level 2 Component: Modern Authentication Simulation (JWT)
- * Simulates a Single Page Application (SPA) environment where tokens are 
- * managed explicitly by the client logic.
+ * ------------------------------------------------------------------
+ * LEVEL 2: MODERN AUTHENTICATION SIMULATION (JWT)
+ * ------------------------------------------------------------------
+ * Simulates a modern Single Page Application (SPA) environment.
+ * * Security Characteristics:
+ * - Transmission: application/json (Modern standard)
+ * - Storage: LocalStorage or SessionStorage (Client-managed)
+ * - Vulnerability: Susceptible to XSS attacks (Token Exfiltration)
+ * - Persistence: Handled via the 'Remember Me' flag in authService.
  */
 const Level2 = ({ user, setUser }) => {
   const navigate = useNavigate();
   
-  // State Management
+  // =========================================================================
+  // STATE MANAGEMENT
+  // =========================================================================
   const [step, setStep] = useState(1); // 1: Credentials, 2: MFA
   const [isLoading, setIsLoading] = useState(false);
-  const [tempToken, setTempToken] = useState('');
+  const [tempToken, setTempToken] = useState(''); // Temporary token for MFA handover
   const [formData, setFormData] = useState({ 
     email: '', 
     password: '', 
@@ -30,26 +38,48 @@ const Level2 = ({ user, setUser }) => {
     rememberMe: false 
   });
 
-  // 1. Session Validation
+  // =========================================================================
+  // 1. SESSION SYNCHRONIZATION
+  // =========================================================================
   useEffect(() => {
+    let isMounted = true;
     const checkSession = async () => {
       try {
         const data = await authService.getCurrentUser();
-        if (data.user) setUser(data.user);
+        if (isMounted && data.user) setUser(data.user);
       } catch (err) {
-        // Silent catch: User is simply unauthenticated
+        // Silent failure expected if no session exists
       }
     };
     checkSession();
+    return () => { isMounted = false; };
   }, [setUser]);
 
-  // 2. Input Handler
+  // =========================================================================
+  // 2. HANDLERS & LOGIC
+  // =========================================================================
+
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
   };
 
-  // 3. Authentication Logic
+  /**
+   * Updates local state upon successful authentication.
+   * Defined BEFORE usage to prevent ReferenceErrors.
+   */
+  const finalizeLogin = (res, tId) => {
+    // Note: authService has already handled token storage.
+    // We only need to update the UI state here.
+    const { user: userData } = res;
+    setUser(userData);
+    toast.success(`Access Granted. Welcome, ${userData.name}`, { id: tId });
+  };
+
+  /**
+   * Main Login Flow
+   * Handles both initial credential exchange and secondary MFA verification.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -57,11 +87,13 @@ const Level2 = ({ user, setUser }) => {
 
     try {
       if (step === 1) {
-        // Step A: Initial Credential Exchange (JSON Payload)
+        // ---------------------------------------------------
+        // STEP A: INITIAL CREDENTIAL EXCHANGE
+        // ---------------------------------------------------
         const res = await authService.loginLevel2({
           email: formData.email.trim(),
           password: formData.password,
-          rememberMe: formData.rememberMe
+          rememberMe: formData.rememberMe // Critical: pass persistence preference
         });
 
         if (res.mfa_required) {
@@ -72,44 +104,25 @@ const Level2 = ({ user, setUser }) => {
           finalizeLogin(res, tId);
         }
       } else {
-        // Step B: MFA Verification
+        // ---------------------------------------------------
+        // STEP B: MFA VERIFICATION
+        // ---------------------------------------------------
         const res = await authService.verifyMfa({
           email: formData.email.trim(),
           code: formData.code.trim(),
-          temp_token: tempToken
+          temp_token: tempToken,
+          rememberMe: formData.rememberMe // Ensure MFA flow also respects persistence
         });
         
         if (res.success) finalizeLogin(res, tId);
       }
     } catch (err) {
-      toast.error(err.sanitizedMessage || 'Token Rejected.', { id: tId });
+      toast.error(err.response?.data?.message || 'Token Rejected.', { id: tId });
     } finally {
       setIsLoading(false);
     }
   };
 
-  /**
-   * Finalizes the login and persists the JWT.
-   * CRITICAL: Explicit storage simulates XSS vulnerability surface.
-   */
-  const finalizeLogin = (res, tId) => {
-    const { token, user: userData } = res;
-    
-    // Determine storage persistence based on user preference
-    const storage = formData.rememberMe ? localStorage : sessionStorage;
-    
-    // Clean slate protocol
-    localStorage.removeItem('auth_token');
-    sessionStorage.removeItem('auth_token');
-    
-    // Store the new Bearer Token
-    if (token) storage.setItem('auth_token', token);
-    
-    setUser(userData);
-    toast.success(`Access Granted. Welcome, ${userData.name}`, { id: tId });
-  };
-
-  // 4. Secure Logout Handler (Active Revocation)
   const handleLogout = async () => {
     const tId = toast.loading('Revoking JWT...');
     try {
@@ -124,7 +137,11 @@ const Level2 = ({ user, setUser }) => {
     }
   };
 
-  // Render Dashboard if authenticated
+  // =========================================================================
+  // 3. UI RENDERING
+  // =========================================================================
+
+  // If authenticated, show the Dashboard "Victim" View
   if (user) return <Dashboard user={user} setUser={setUser} onLogout={handleLogout} />;
 
   return (
@@ -149,7 +166,7 @@ const Level2 = ({ user, setUser }) => {
               required 
             />
             
-            {/* New BEM Checkbox Component */}
+            {/* Persistence Option (JWT in LocalStorage vs SessionStorage) */}
             <Checkbox 
               label="Stay Persistent (JWT)" 
               name="rememberMe" 
@@ -170,7 +187,6 @@ const Level2 = ({ user, setUser }) => {
           />
         )}
 
-        {/* BEM Actions Wrapper */}
         <div className="form-actions">
           <Button type="submit" disabled={isLoading} fullWidth>
             {isLoading ? 'PROCESSING...' : (step === 1 ? 'INITIATE' : 'VERIFY')}
