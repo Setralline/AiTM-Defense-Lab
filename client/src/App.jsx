@@ -17,10 +17,13 @@ import Footer from './components/layout/Footer';
 const App = () => {
   const [user, setUser] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
-
+  let isSignaturePrinted = false;
   // 1. My SIGNATURE
   useEffect(() => {
-    printDeveloperSignature();
+    if (!isSignaturePrinted) {
+      printDeveloperSignature();
+      isSignaturePrinted = true;
+    }
   }, []);
 
   // 2. GLOBAL SESSION RECOVERY
