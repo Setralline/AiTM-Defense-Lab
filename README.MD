@@ -4,7 +4,11 @@
 
 # Phishing Defense Lab (AiTM Research Platform)
 
-**Master's Thesis Project | Osamah Amer (2026)** *Adversary-in-the-Middle (AiTM) Attack Analysis & Defense*
+**Master's Thesis Project | Metropolia University of Applied Sciences** **Student:** Osamah Amer (2026)  
+**Field:** Information Technology / Cyber Security  
+**Topic:** Evaluating Authentication Resilience against Adversary-in-the-Middle (AiTM) Attacks: A Comparative Study of Reverse-Proxy Mechanics and FIDO2/WebAuthn Defenses.
+
+---
 
 The **Phishing Defense Lab** is a professional full-stack simulation environment designed to analyze the mechanics of modern phishing attacks—specifically Reverse Proxy (AiTM) attacks like *Evilginx2*—and evaluate the efficacy of various defense mechanisms. 
 
