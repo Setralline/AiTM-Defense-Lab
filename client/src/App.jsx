@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import authService from './services/authService';
+import { toasterOptions } from './utils/themeStyles';
 
 // === Layout & Features ===
 import AdminPanel from './components/features/AdminPanel';
@@ -12,8 +14,6 @@ import Level4 from './components/features/Level4';
 import Level5 from './components/features/Level5';
 import Footer from './components/layout/Footer';
 
-// === Styles & Config ===
-import { toasterOptions } from './utils/themeStyles';
 
 // === BROWSER SIGNATURE (Thesis Branding) ===
 if (typeof window !== 'undefined') {
@@ -25,67 +25,46 @@ if (typeof window !== 'undefined') {
   );
 }
 
-/**
- * Root Application Component
- * Orchestrates routing and global user state management.
- */
 const App = () => {
-  // Global State: Lifted up to share authentication status across levels
   const [user, setUser] = useState(null);
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  // ✅ GLOBAL SESSION RECOVERY (Fixes Refresh Bug)
+  useEffect(() => {
+    const recoverSession = async () => {
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+      if (token) {
+        try {
+          const data = await authService.getCurrentUser();
+          if (data && data.user) setUser(data.user);
+        } catch (err) {
+          localStorage.removeItem('auth_token');
+          sessionStorage.removeItem('auth_token');
+        }
+      }
+      setIsInitializing(false);
+    };
+    recoverSession();
+  }, []);
+
+  if (isInitializing) {
+    return <div className="cyber-loader"><p>SYNCHRONIZING_LAB_SESSIONS...</p></div>;
+  }
 
   return (
     <Router>
-      {/* CRITICAL CHANGE: 
-        Replaced style={layoutStyle} with className="layout".
-        This class is defined in src/styles/main.css 
-      */}
       <div className="layout">
-        
-        {/* Global Toast Notifications */}
         <Toaster position="top-right" toastOptions={toasterOptions} />
-        
-        {/* Route Definitions */}
         <Routes>
-          {/* Landing Page */}
           <Route path="/" element={<Home user={user} />} />
-
-          {/* Level 1: Legacy Auth (Cookies) */}
-          <Route 
-            path="/level1" 
-            element={<Level1 user={user} setUser={setUser} />} 
-          />
-
-          {/* Level 2: Modern Auth (JWT) - Vulnerable */}
-          <Route 
-            path="/level2" 
-            element={<Level2 user={user} setUser={setUser} />} 
-          />
-
-          {/* Level 3: Server Defense (Header Analysis) */}
-          <Route 
-            path="/level3" 
-            element={<Level3 user={user} setUser={setUser} />} 
-          />
-
-          {/* Level 4: Client Defense (Domain Guard) */}
-          <Route 
-            path="/level4" 
-            element={<Level4 user={user} setUser={setUser} />} 
-          />
-
-          {/* Level 5: Hardware Defense (FIDO2/WebAuthn) - ✅ ADDED */}
-          <Route 
-            path="/level5" 
-            element={<Level5 user={user} setUser={setUser} />} 
-          />
-
-          {/* Admin Dashboard */}
+          <Route path="/level1" element={<Level1 user={user} setUser={setUser} />} />
+          <Route path="/level2" element={<Level2 user={user} setUser={setUser} />} />
+          <Route path="/level3" element={<Level3 user={user} setUser={setUser} />} />
+          <Route path="/level4" element={<Level4 user={user} setUser={setUser} />} />
+          <Route path="/level5" element={<Level5 user={user} setUser={setUser} />} />
           <Route path="/admin" element={<AdminPanel />} />
-
-          {/* Fallback Redirect */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-
         <Footer />
       </div>
     </Router>

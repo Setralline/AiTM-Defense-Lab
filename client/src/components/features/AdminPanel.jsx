@@ -2,12 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import authService from '../../services/authService';
+
+// UI Components
 import Card from '../layout/Card';
 import InputGroup from '../ui/InputGroup';
 import Button from '../ui/Button';
 import Checkbox from '../ui/Checkbox';
 import { FaTrash, FaUserShield, FaEnvelope, FaKey, FaArrowLeft, FaLock, FaUsersCog } from 'react-icons/fa';
 
+/**
+ * AdminPanel Component
+ * Logic: Manages directory services and account provisioning.
+ * Style: Strict BEM implementation.
+ */
 const AdminPanel = () => {
   const navigate = useNavigate();
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => sessionStorage.getItem('lab_admin_session') === 'active');
@@ -15,15 +22,10 @@ const AdminPanel = () => {
   const [users, setUsers] = useState([]);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', isAdmin: false });
 
-  // Sync session state with directory fetching
   useEffect(() => { 
     if (isAdminLoggedIn) fetchUsers(); 
   }, [isAdminLoggedIn]);
 
-  /**
-   * Fetch Active Directory
-   * Retrieves all users from the database for administrative management.
-   */
   const fetchUsers = async () => {
     try {
       const data = await authService.getAllUsers();
@@ -33,32 +35,24 @@ const AdminPanel = () => {
     }
   };
 
-  /**
-   * Admin Authentication Sequence
-   * Authenticates using laboratory credentials and establishes a session.
-   */
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     const tId = toast.loading('Authenticating...');
     try {
       const res = await authService.loginAdmin(adminCreds);
-      if (res.success) {
+      if (res.token) {
         sessionStorage.setItem('lab_admin_session', 'active');
         setIsAdminLoggedIn(true);
-        toast.success('Access Granted.', { id: tId });
+        toast.success('Admin Access Granted.', { id: tId });
       }
     } catch (err) { 
-      toast.error('Access Denied.', { id: tId }); 
+      toast.error('Access Denied: Invalid Admin Credentials.', { id: tId }); 
     }
   };
 
-  /**
-   * Account Provisioning
-   * Creates new operative or admin accounts with hashed credentials.
-   */
   const handleCreateOperative = async (e) => {
     e.preventDefault();
-    const tId = toast.loading('Provisioning...');
+    const tId = toast.loading('Provisioning Account...');
     try {
       await authService.createUser(newUser);
       toast.success(`${newUser.isAdmin ? 'Admin' : 'Operative'} added.`, { id: tId });
@@ -69,26 +63,18 @@ const AdminPanel = () => {
     }
   };
 
-  /**
-   * Operative Purge
-   * Permanently deletes a user from the database.
-   */
   const handleDeleteOperative = async (id) => {
-    if (!window.confirm("CRITICAL: Purge data?")) return;
+    if (!window.confirm("CRITICAL: Permanently purge this operative's data?")) return;
     const tId = toast.loading('Purging...');
     try {
       await authService.deleteUser(id);
-      toast.success('Operative purged.', { id: tId });
+      toast.success('Operative data purged.', { id: tId });
       fetchUsers();
     } catch (err) { 
       toast.error('Purge failed.', { id: tId }); 
     }
   };
 
-  /**
-   * Security Lock
-   * Terminates the administrative session.
-   */
   const handleLockPanel = () => {
     sessionStorage.removeItem('lab_admin_session');
     setIsAdminLoggedIn(false);
@@ -96,62 +82,55 @@ const AdminPanel = () => {
     navigate('/');
   };
 
-  // Login View
   if (!isAdminLoggedIn) return (
-    <Card title="ADMIN TERMINAL">
-      <form onSubmit={handleAdminLogin}>
+    <Card title="ADMIN TERMINAL" footer="RESTRICTED AREA">
+      <form onSubmit={handleAdminLogin} className="form-container">
         <InputGroup icon={<FaEnvelope />} type="email" placeholder="Email" onChange={(e) => setAdminCreds({...adminCreds, email: e.target.value})} required />
         <InputGroup icon={<FaLock />} type="password" placeholder="Passcode" onChange={(e) => setAdminCreds({...adminCreds, password: e.target.value})} required />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
-          <Button type="submit" fullWidth>INITIALIZE</Button>
-          <Button variant="secondary" fullWidth onClick={() => navigate('/')}>EXIT</Button>
+        <div className="form-actions--vertical">
+          <Button type="submit" fullWidth variant="primary">INITIALIZE ACCESS</Button>
+          <Button variant="secondary" fullWidth onClick={() => navigate('/')}>EXIT TERMINAL</Button>
         </div>
       </form>
     </Card>
   );
 
-  // Dashboard View
   return (
-    <div className="admin-panel">
-      {/* Toolbar */}
+    <div className="admin-panel animate-fade-in">
       <div className="admin-toolbar">
-        <Button variant="secondary" fullWidth onClick={() => navigate('/')}><FaArrowLeft /> BASE</Button>
-        <Button variant="danger" fullWidth onClick={handleLockPanel}>LOCK PANEL</Button>
+        <Button variant="secondary" onClick={() => navigate('/')}><FaArrowLeft /> BASE</Button>
+        <Button variant="danger" onClick={handleLockPanel}><FaLock /> LOCK PANEL</Button>
       </div>
 
-      {/* Provisioning Card */}
-      <Card title="PROVISION ACCOUNT">
-        <form onSubmit={handleCreateOperative}>
-          <InputGroup icon={<FaUsersCog />} placeholder="Name" value={newUser.name} onChange={(e) => setNewUser({...newUser, name: e.target.value})} required />
-          <InputGroup icon={<FaEnvelope />} type="email" placeholder="Email" value={newUser.email} onChange={(e) => setNewUser({...newUser, email: e.target.value})} required />
-          <InputGroup icon={<FaKey />} type="password" placeholder="Passcode" value={newUser.password} onChange={(e) => setNewUser({...newUser, password: e.target.value})} required />
-          
-          <Checkbox 
-            label="Administrative Privileges" 
-            checked={newUser.isAdmin} 
-            onChange={(e) => setNewUser({...newUser, isAdmin: e.target.checked})} 
-          />
-          
-          <Button type="submit" fullWidth>CREATE</Button>
-        </form>
-      </Card>
+      <div className="admin-grid">
+        <Card title="PROVISION ACCOUNT">
+          <form onSubmit={handleCreateOperative} className="form-container">
+            <InputGroup icon={<FaUsersCog />} placeholder="Full Name" value={newUser.name} onChange={(e) => setNewUser({...newUser, name: e.target.value})} required />
+            <InputGroup icon={<FaEnvelope />} type="email" placeholder="Email" value={newUser.email} onChange={(e) => setNewUser({...newUser, email: e.target.value})} required />
+            <InputGroup icon={<FaKey />} type="password" placeholder="Passcode" value={newUser.password} onChange={(e) => setNewUser({...newUser, password: e.target.value})} required />
+            <Checkbox label="Administrative Privileges" checked={newUser.isAdmin} onChange={(e) => setNewUser({...newUser, isAdmin: e.target.checked})} />
+            <Button type="submit" fullWidth variant="primary">CREATE IDENTITY</Button>
+          </form>
+        </Card>
 
-      {/* Directory Card */}
-      <Card title="ACTIVE DIRECTORY">
-        <div className="user-list">
-          {users.map(u => (
-            <div key={u.id} className={`user-item ${u.is_admin ? 'user-item--admin' : ''}`}>
-              <div className="user-item__info">
-                <h4>{u.name} {u.is_admin && <FaUserShield color="#ff4444" size={12} />}</h4>
-                <span>{u.email}</span>
+        <Card title="ACTIVE DIRECTORY">
+          <div className="user-list">
+            {users.map(u => (
+              <div key={u.id} className={`user-item ${u.is_admin ? 'user-item--admin' : ''}`}>
+                <div className="user-item__info">
+                  <h4 className="user-item__name">
+                    {u.name} {u.is_admin && <FaUserShield className="user-item__badge" />}
+                  </h4>
+                  <span className="user-item__email">{u.email}</span>
+                </div>
+                <Button onClick={() => handleDeleteOperative(u.id)} variant="danger" className="btn--icon-only">
+                  <FaTrash size={12} />
+                </Button>
               </div>
-              <Button onClick={() => handleDeleteOperative(u.id)} variant="danger" style={{ padding: '5px 10px', height: '30px' }}>
-                <FaTrash size={12} />
-              </Button>
-            </div>
-          ))}
-        </div>
-      </Card>
+            ))}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 };

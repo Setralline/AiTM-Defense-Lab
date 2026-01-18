@@ -4,6 +4,11 @@ import { FaCookieBite, FaShieldVirus, FaUserShield, FaGlobe, FaFingerprint, FaSk
 import Card from '../layout/Card';
 import Button from '../ui/Button';
 
+/**
+ * Home Component
+ * Logic: Mission selection gateway.
+ * Style: Balanced cyber-grid with BEM.
+ */
 const Home = () => {
   const navigate = useNavigate();
 
@@ -11,74 +16,36 @@ const Home = () => {
     <Card title="SELECT MISSION" footer="UNAUTHORIZED ACCESS PROHIBITED">
       <div className="home-grid">
         <p className="home-desc">
-          Choose your target environment to begin the simulation and test authentication vulnerabilities.
+          Select a target environment to analyze authentication vulnerabilities and defense mechanisms.
         </p>
+
+        <Button variant="primary" fullWidth onClick={() => navigate('/level1')}>
+          <FaCookieBite size={18} /> LEVEL 1: COOKIES (LEGACY)
+        </Button>
+
+        <Button variant="secondary" fullWidth onClick={() => navigate('/level2')}>
+          <FaShieldVirus size={18} /> LEVEL 2: TOKENS (MODERN)
+        </Button>
+
+        <Button variant="secondary" fullWidth onClick={() => navigate('/level3')}>
+          <FaUserShield size={18} /> LEVEL 3: HEADER DEFENSE
+        </Button>
+
+        <Button variant="secondary" fullWidth onClick={() => navigate('/level4')}>
+          <FaGlobe size={18} /> LEVEL 4: CLIENT DEFENSE
+        </Button>
         
-        {/* Level 1: Legacy */}
-        <Button 
-          variant="primary" 
-          fullWidth 
-          onClick={() => navigate('/level1')}
-        >
-          <FaCookieBite size={18} /> 
-          LEVEL 1: COOKIES (LEGACY)
-        </Button>
-
-        {/* Level 2: Modern (Vulnerable) */}
-        <Button 
-          variant="secondary" 
-          fullWidth 
-          onClick={() => navigate('/level2')}
-        >
-          <FaShieldVirus size={18} /> 
-          LEVEL 2: TOKENS (MODERN)
-        </Button>
-
-        {/* Level 3: Server Defense */}
-        <Button 
-          variant="secondary" 
-          fullWidth 
-          onClick={() => navigate('/level3')}
-        >
-          <FaUserShield size={18} /> 
-          LEVEL 3: HEADER DEFENSE
-        </Button>
-
-        {/* Level 4: Client Defense */}
-        <Button 
-          variant="secondary" 
-          fullWidth 
-          onClick={() => navigate('/level4')}
-        >
-          <FaGlobe size={18} /> 
-          LEVEL 4: CLIENT DEFENSE
-        </Button>
-
-        {/* Level 5: FIDO2 Hardware Defense (NEW) */}
-        <Button 
-          variant="secondary" 
-          fullWidth 
+        <Button
+          variant="secondary"
+          fullWidth
           onClick={() => navigate('/level5')}
-          style={{ 
-            borderColor: '#f1c40f', 
-            color: '#f39c12',
-            background: 'rgba(241, 196, 15, 0.05)'
-          }}
+          className="btn--secure-gold"
         >
-          <FaFingerprint size={18} /> 
-          LEVEL 5: FIDO2 (PHISHING PROOF)
+          <FaFingerprint size={18} /> LEVEL 5: FIDO2 (PHISHING PROOF)
         </Button>
 
-        {/* Decor Footer */}
-        <div style={{ 
-          marginTop: '20px', 
-          textAlign: 'center', 
-          fontSize: '11px', 
-          color: 'var(--cyber-green)',
-          letterSpacing: '3px',
-          textShadow: '0 0 5px rgba(0, 255, 65, 0.5)'
-        }}>
-          <FaSkullCrossbones style={{ verticalAlign: 'middle', marginRight: '5px' }} /> 
+        <div className="home-footer-decor">
+          <FaSkullCrossbones className="footer-icon" />
           PHISHING LAB INITIALIZED
         </div>
       </div>

@@ -3,190 +3,112 @@ import { startRegistration, startAuthentication } from '@simplewebauthn/browser'
 
 /**
  * ------------------------------------------------------------------
- * AUTHENTICATION SERVICE LAYER
+ * AUTHENTICATION SERVICE LAYER (STABILIZED v2026)
  * ------------------------------------------------------------------
- * This service acts as the orchestration engine for the Phishing Defense Lab.
- * It manages the complex "Hybrid Architecture" by bridging:
- * 1. Legacy Cookie-based Authentication (Level 1)
- * 2. Modern Token-based Authentication (Level 2, 3, 4)
- * 3. Hardware-Bound FIDO2 Authentication (Level 5)
- * 4. Active Session Revocation & Admin Operations
+ * Orchestrates session management across all labs (Legacy to FIDO2).
  */
-
 const authService = {
 
   // =========================================================================
-  // 0. SESSION LIFECYCLE & STATE MANAGEMENT
+  // 0. TOKEN & PERSISTENCE HELPER
   // =========================================================================
 
-  /**
-   * Retrieves the current user's profile to validate session integrity.
-   * * Strategy:
-   * - Checks for JWT in local storage (Level 2-5).
-   * - Relies on automated browser cookie transmission for Level 1.
-   */
+  _handlePersistence: (token, rememberMe) => {
+    if (!token) return;
+    localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_token');
+
+    if (rememberMe) {
+      localStorage.setItem('auth_token', token); // 1-Year Persistence
+    } else {
+      sessionStorage.setItem('auth_token', token); // Session-only (Survives Refresh)
+    }
+  },
+
   getCurrentUser: async () => {
     const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
-
-    // Conditional Header Injection:
-    // Only attach 'Authorization' header if a token exists.
-    const config = token
-      ? { headers: { Authorization: `Bearer ${token}` } }
-      : {};
-
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
     const response = await axios.get('/auth/me', config);
     return response.data;
   },
 
-  /**
-   * Active Session Revocation (The Kill Switch).
-   * * Security Protocol:
-   * 1. Attempts to notify the backend to blacklist the session.
-   * 2. GUARANTEES client-side cleanup via the 'finally' block.
-   */
   logout: async () => {
     try {
       const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
       const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-
-      // Trigger server-side blacklisting
       await axios.post('/auth/logout', {}, config);
     } catch (err) {
-      console.warn('[Security] Backend revocation unreachable. Proceeding with local purge.', err.message);
+      console.warn('[Security] Backend session revocation unreachable.');
     } finally {
-      // Mandatory State Cleanup (Defense in Depth)
       localStorage.removeItem('auth_token');
       sessionStorage.removeItem('auth_token');
-
-      // Hard Redirect to ensure clean application state
-      window.location.href = '/login';
+      // FIX: Reload current location to clear state without jumping to another lab
+      window.location.reload();
     }
   },
 
   // =========================================================================
-  // 1. AUTHENTICATION STRATEGIES (Hybrid Tiers)
+  // 1. HYBRID AUTHENTICATION STRATEGIES (LEVELS 1-4)
   // =========================================================================
 
-  /**
-   * LEVEL 1: Legacy Simulation (Cookie/Form-Based).
-   */
   loginLevel1: async (formData) => {
-    // formData is expected to be a URLSearchParams object here
     const response = await axios.post('/auth/level1', formData, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
     return response.data;
   },
 
-  /**
-   * UNIFIED MODERN LOGIN (Levels 2, 3, 4).
-   * * Technical Note:
-   * Supports protocol versioning ('v2' vs 'v3') to target different defense mechanisms.
-   */
-  loginModern: async (email, password, version = 'v2') => {
-    // Determine endpoint: v3 goes to /auth/level3, others to /auth/level2
+  loginModern: async (email, password, version = 'v2', rememberMe = false) => {
     const endpoint = `/auth/level${version === 'v3' ? '3' : '2'}`;
-
     try {
       const response = await axios.post(endpoint, { email, password });
-
-      // Default persistence
       if (response.data.token) {
-        localStorage.setItem('auth_token', response.data.token);
+        authService._handlePersistence(response.data.token, rememberMe);
       }
-
       return response.data;
     } catch (error) {
-      // Special handling for Lab 3 Defense (403 Forbidden)
-      if (error.response && error.response.status === 403) {
-        throw {
-          message: `🛡️ SECURITY BLOCKED: ${error.response.data.message}`,
-          status: 403
-        };
-      }
-
       throw error.response ? error.response.data : { message: 'Login Failed' };
     }
   },
 
-  /**
-   * LEVEL 2: Modern Simulation (Wrapper for backward compatibility).
-   */
   loginLevel2: async (data) => {
-    return authService.loginModern(data.email, data.password, 'v2').then(res => {
-      if (res.success && res.token) {
-        const storage = data.rememberMe ? localStorage : sessionStorage;
-        if (!data.rememberMe) localStorage.removeItem('auth_token');
-        storage.setItem('auth_token', res.token);
-      }
-      return res;
-    });
+    // استخدم authService مباشرة لتجنب أخطاء intermediate value
+    return authService.loginModern(data.email, data.password, 'v2', data.rememberMe);
   },
 
-  /**
-   * LEVEL 5: FIDO2 / WEBAUTHN (Hardware Defense).
-   * * Technical Note:
-   * Uses @simplewebauthn/browser to interact with the authenticator.
-   * Credentials are bound to origin, making them phishing-proof.
-   */
+  // =========================================================================
+  // 2. LEVEL 5: FIDO2 / WEBAUTHN ORCHESTRATION
+  // =========================================================================
 
-  /**
-   * Step 1: Password Verification (Pre-FIDO check)
-   * Checks credentials and determines if a hardware key is required.
-   */
-  fidoLoginWithPassword: async (email, password) => {
-    try {
-      const response = await axios.post('/auth/fido/login-pwd', { email, password });
-
-      // If user has no key, backend logs them in directly
-      if (response.data.status === 'success' && response.data.token) {
-        localStorage.setItem('auth_token', response.data.token);
-      }
-
-      return response.data;
-    } catch (error) {
-      throw error.response ? error.response.data : { message: 'Password Check Failed' };
+  fidoLoginWithPassword: async (email, password, rememberMe = false) => {
+    const response = await axios.post('/auth/fido/login-pwd', { email, password });
+    if (response.data.status === 'success' && response.data.token) {
+      authService._handlePersistence(response.data.token, rememberMe);
     }
+    return { ...response.data, rememberMe };
   },
 
-
-  // STEP: Registration
-fidoRegister: async (email) => {
-  try {
+  fidoRegister: async (email, rememberMe = false) => {
     const optsRes = await axios.post('/auth/fido/register/start', { email });
-    
-    // FIX: Wrap options in { optionsJSON: ... }
     const attResp = await startRegistration({ optionsJSON: optsRes.data });
+    const verifyRes = await axios.post('/auth/fido/register/finish', { email, data: attResp });
 
-    const verifyRes = await axios.post('/auth/fido/register/finish', {
-      email,
-      data: attResp
-    });
+    if (verifyRes.data.verified && verifyRes.data.token) {
+      authService._handlePersistence(verifyRes.data.token, rememberMe);
+    }
     return verifyRes.data;
-  } catch (error) {
-    throw error.response ? error.response.data : { message: 'FIDO Registration Failed' };
-  }
-},
+  },
 
-// STEP: Authentication
-fidoLogin: async (email) => {
-  try {
+  fidoLogin: async (email, rememberMe = false) => {
     const optsRes = await axios.post('/auth/fido/login/start', { email });
-
-    // FIX: Wrap options in { optionsJSON: ... }
     const assertResp = await startAuthentication({ optionsJSON: optsRes.data });
+    const verifyRes = await axios.post('/auth/fido/login/finish', { email, data: assertResp });
 
-    const verifyRes = await axios.post('/auth/fido/login/finish', {
-      email,
-      data: assertResp
-    });
+    if (verifyRes.data.verified && verifyRes.data.token) {
+      authService._handlePersistence(verifyRes.data.token, rememberMe);
+    }
     return verifyRes.data;
-  } catch (error) {
-    throw error;
-  }
-},
+  },
 
   fidoDisable: async (email) => {
     const response = await axios.post('/auth/fido/disable', { email });
@@ -194,56 +116,42 @@ fidoLogin: async (email) => {
   },
 
   // =========================================================================
-  // 2. MULTI-FACTOR AUTHENTICATION (MFA)
+  // 3. MFA & ADMIN GATEWAY
   // =========================================================================
 
   verifyMfa: async (data) => {
     const response = await axios.post('/auth/mfa/verify', data);
+    if (response.data.token) {
+      authService._handlePersistence(response.data.token, data.rememberMe || false);
+    }
     return response.data;
   },
 
   enableMFA: async (data) => {
-    const response = await axios.post('/auth/mfa/enable', data);
+    const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+    const response = await axios.post('/auth/mfa/enable', data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     return response.data;
   },
 
   disableMFA: async (data) => {
-    const response = await axios.post('/auth/mfa/disable', data);
+    const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+    const response = await axios.post('/auth/mfa/disable', data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     return response.data;
   },
-
-  // =========================================================================
-  // 3. ADMINISTRATIVE GATEWAY
-  // =========================================================================
 
   loginAdmin: async (credentials) => {
     const response = await axios.post('/auth/admin/login', credentials);
+    if (response.data.token) localStorage.setItem('auth_token', response.data.token);
     return response.data;
   },
 
-  /**
-   * Retrieve all operatives from the laboratory database.
-   */
-  getAllUsers: async () => {
-    const response = await axios.get('/auth/admin/users');
-    return response.data;
-  },
-
-  /**
-   * Provision a new operative account with secure hashing.
-   */
-  createUser: async (userData) => {
-    const response = await axios.post('/auth/admin/users', userData);
-    return response.data;
-  },
-
-  /**
-   * Permanent deletion of a user account.
-   */
-  deleteUser: async (userId) => {
-    const response = await axios.delete(`/auth/admin/users/${userId}`);
-    return response.data;
-  }
+  getAllUsers: () => axios.get('/auth/admin/users').then(res => res.data),
+  createUser: (data) => axios.post('/auth/admin/users', data).then(res => res.data),
+  deleteUser: (id) => axios.delete(`/auth/admin/users/${id}`).then(res => res.data)
 };
 
 export default authService;

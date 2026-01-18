@@ -1,12 +1,13 @@
 /* =========================================
-   1. VARIABLES & TOKENS
+   1. VARIABLES & DESIGN TOKENS
    ========================================= */
 :root {
   /* Colors */
-  --cyber-red: #ff1a1a;       /* Primary Brand Color */
-  --cyber-green: #00ff41;     /* Success / Hacker Green */
-  --cyber-dark: #0a0a0a;      /* Background Dark */
-  --cyber-gray: #1f1f1f;      /* Secondary Background */
+  --cyber-red: #ff1a1a;
+  --cyber-green: #00ff41;
+  --cyber-gold: #f1c40f;
+  --cyber-dark: #0a0a0a;
+  --cyber-gray: #1f1f1f;
   --cyber-text-main: #e0e0e0;
   --cyber-text-muted: #888;
   
@@ -14,13 +15,14 @@
   --border-color: #333;
   --shadow-glow-red: 0 0 15px rgba(255, 26, 26, 0.4);
   --shadow-glow-green: 0 0 15px rgba(0, 255, 65, 0.4);
+  --shadow-glow-gold: 0 0 15px rgba(243, 156, 18, 0.3);
   
   /* Typography */
   --font-stack: 'Courier New', Courier, monospace;
 }
 
 /* =========================================
-   2. GLOBAL RESET
+   2. GLOBAL RESET & BASE
    ========================================= */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -79,11 +81,7 @@ input:-webkit-autofill:active {
   border-color: var(--cyber-red);
 }
 
-.card__header {
-  text-align: center;
-  margin-bottom: 25px;
-}
-
+.card__header { text-align: center; margin-bottom: 25px; }
 .card__logo {
   width: 80px;
   margin-bottom: 20px;
@@ -110,15 +108,21 @@ input:-webkit-autofill:active {
 }
 
 /* =========================================
-   13. BLOCK: FORM ACTIONS
+   5. BLOCK: FORM ACTIONS
    ========================================= */
-
 .form-actions {
   display: flex;
   flex-direction: column;
-  gap: 15px;              
-  margin-top: 25px;       
+  gap: 15px;
+  margin-top: 25px;
   width: 100%;
+}
+
+.form-actions--vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
 }
 
 .form-actions .btn {
@@ -126,7 +130,7 @@ input:-webkit-autofill:active {
 }
 
 /* =========================================
-   5. BLOCK: BUTTON
+   6. BLOCK: BUTTON
    ========================================= */
 .btn {
   height: 48px;
@@ -146,6 +150,7 @@ input:-webkit-autofill:active {
   position: relative;
   overflow: hidden;
   gap: 10px;
+  border: 1px solid transparent;
 }
 
 .btn:disabled {
@@ -153,7 +158,7 @@ input:-webkit-autofill:active {
   cursor: not-allowed;
 }
 
-/* Modifier: Primary (Red Glow) */
+/* Button Modifiers */
 .btn--primary {
   background: var(--cyber-red);
   color: #000;
@@ -165,7 +170,6 @@ input:-webkit-autofill:active {
   box-shadow: 0 0 25px var(--cyber-red);
 }
 
-/* Modifier: Secondary (Gray) */
 .btn--secondary {
   background: var(--cyber-gray);
   color: var(--cyber-text-main);
@@ -177,7 +181,6 @@ input:-webkit-autofill:active {
   background: #2a2a2a;
 }
 
-/* Modifier: Danger (Outlined Red) */
 .btn--danger {
   background: transparent;
   color: var(--cyber-red);
@@ -188,13 +191,22 @@ input:-webkit-autofill:active {
   background: rgba(255, 26, 26, 0.1);
 }
 
-/* Modifier: Width */
-.btn--full {
-  width: 100%;
+.btn--secure-gold {
+    border-color: var(--cyber-gold) !important;
+    color: #f39c12 !important;
+    background: rgba(241, 196, 15, 0.05) !important;
 }
 
+.btn--secure-gold:hover {
+    background: rgba(241, 196, 15, 0.15) !important;
+    box-shadow: var(--shadow-glow-gold);
+}
+
+.btn--full { width: 100%; }
+.btn--mt { margin-top: 10px; }
+
 /* =========================================
-   6. BLOCK: INPUT GROUP
+   7. BLOCK: INPUT GROUP
    ========================================= */
 .input-group {
   position: relative;
@@ -220,7 +232,6 @@ input:-webkit-autofill:active {
   box-shadow: var(--shadow-glow-red);
 }
 
-/* Modifier: Highlight (for MFA/Token) */
 .input-group__field--highlight {
   border-color: var(--cyber-red);
   text-align: center;
@@ -245,7 +256,7 @@ input:-webkit-autofill:active {
 }
 
 /* =========================================
-   7. BLOCK: CHECKBOX
+   8. BLOCK: CHECKBOX
    ========================================= */
 .checkbox {
   display: flex;
@@ -269,7 +280,7 @@ input:-webkit-autofill:active {
 }
 
 /* =========================================
-   8. BLOCK: FOOTER
+   9. BLOCK: FOOTER
    ========================================= */
 .footer {
   width: 100%;
@@ -312,14 +323,14 @@ input:-webkit-autofill:active {
 }
 
 /* =========================================
-   9. BLOCK: ADMIN PANEL
+   10. BLOCK: ADMIN PANEL
    ========================================= */
 .admin-panel {
   display: flex;
   flex-direction: column;
   gap: 20px;
   align-items: center;
-  padding-bottom: 80px; /* Space for footer */
+  padding-bottom: 80px; 
 }
 
 .admin-toolbar {
@@ -343,9 +354,7 @@ input:-webkit-autofill:active {
   border-bottom: 1px solid #1a1a1a;
 }
 
-.user-item--admin {
-  background: rgba(255, 26, 26, 0.05); /* Red tint for admins */
-}
+.user-item--admin { background: rgba(255, 26, 26, 0.05); }
 
 .user-item__info h4 {
   margin: 0;
@@ -362,7 +371,7 @@ input:-webkit-autofill:active {
 }
 
 /* =========================================
-   10. BLOCK: HOME GRID
+   11. BLOCK: HOME & DASHBOARD
    ========================================= */
 .home-grid {
   display: grid;
@@ -379,16 +388,27 @@ input:-webkit-autofill:active {
   line-height: 1.6;
 }
 
-/* =========================================
-   11. BLOCK: DASHBOARD INFO PANEL
-   ========================================= */
+.home-footer-decor {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--cyber-green);
+    letter-spacing: 3px;
+    text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Dashboard Info Panel */
 .info-panel {
-  background: #000; /* Darker than card for contrast */
+  background: #000;
   border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 20px;
   margin-bottom: 20px;
-  position: relative; /* For badge positioning */
+  position: relative;
   overflow: hidden;
 }
 
@@ -401,9 +421,7 @@ input:-webkit-autofill:active {
   font-size: 14px;
 }
 
-.info-panel__row:last-child {
-  margin-bottom: 0;
-}
+.info-panel__row:last-child { margin-bottom: 0; }
 
 .info-panel__icon {
   color: var(--cyber-red);
@@ -413,11 +431,9 @@ input:-webkit-autofill:active {
   text-align: center;
 }
 
-.info-panel__text {
-  letter-spacing: 1px;
-}
+.info-panel__text { letter-spacing: 1px; }
 
-/* Badge Element */
+/* Dashboard Status & Badges */
 .clearance-badge {
   position: absolute;
   top: 0;
@@ -429,28 +445,17 @@ input:-webkit-autofill:active {
   color: #fff;
 }
 
-.clearance-badge--secure {
-  background: var(--cyber-green);
-}
+.clearance-badge--secure { background: var(--cyber-green); }
+.clearance-badge--restricted { background: #333; }
 
-.clearance-badge--restricted {
-  background: #333;
-}
-
-/* Status Colors */
 .info-panel__status {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.info-panel__status--secure {
-  color: var(--cyber-green);
-}
-
-.info-panel__status--warning {
-  color: var(--cyber-red);
-}
+.info-panel__status--secure { color: var(--cyber-green); }
+.info-panel__status--warning { color: var(--cyber-red); }
 
 /* QR Container */
 .qr-container {
@@ -475,13 +480,8 @@ input:-webkit-autofill:active {
   display: block;
 }
 
-/* Utility Helper */
-.btn--mt {
-  margin-top: 10px;
-}
-
 /* =========================================
-   12. BLOCK: TOAST ALERTS (Custom)
+   12. BLOCK: TOAST ALERTS
    ========================================= */
 .toast-alert {
   text-align: center;
@@ -516,21 +516,14 @@ input:-webkit-autofill:active {
   transition: background 0.2s;
 }
 
-.toast-alert__btn:hover {
-  background: #444;
-}
-
-.toast-alert__btn--confirm {
-  background: var(--cyber-red);
-  color: #fff;
-}
+.toast-alert__btn:hover { background: #444; }
+.toast-alert__btn--confirm { background: var(--cyber-red); }
 
 .toast-alert__btn--confirm:hover {
   background: #d00000;
   box-shadow: 0 0 10px rgba(255, 26, 26, 0.4);
 }
 
-/* Optional: Border for the toast container itself via toast options */
 .toast-custom-border {
   border: 1px solid var(--cyber-red) !important;
   background: #0a0a0a !important;
