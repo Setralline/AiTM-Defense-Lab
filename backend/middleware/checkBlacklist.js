@@ -1,42 +1,68 @@
-const pool = require('../config/db');
+const fs = require('fs');
+const path = require('path');
+const Blacklist = require('../models/Blacklist');
 
 /**
- * Security Middleware: Session Revocation Check
- * Validates incoming credentials against the token_blacklist to prevent 
- * session replay attacks after a 'Terminate Session' command.
+ * ------------------------------------------------------------------
+ * SECURITY MIDDLEWARE: SESSION REVOCATION CHECK & AUDIT
+ * ------------------------------------------------------------------
+ * Blocks revoked tokens and generates forensic reports in '/logs'.
  */
 const checkBlacklist = async (req, res, next) => {
   try {
-    // 1. Extract credentials from Cookie (Level 1) or Auth Header (Level 2)
     const token = req.cookies.session_id || req.headers.authorization?.split(' ')[1];
 
-    if (!token) {
-      // If no token exists, we proceed to allow the main auth middleware 
-      // to handle the 'Unauthorized' response.
-      return next();
+    if (!token) return next();
+
+    const isRevoked = await Blacklist.isRevoked(token);
+
+    if (isRevoked) {
+      // --- FORENSIC LOGGING START ---
+      const timestamp = new Date().toISOString();
+      const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown';
+      const country = req.headers['cf-ipcountry'] || req.headers['x-country-code'] || 'Unknown/Local';
+      const userAgent = req.get('User-Agent') || 'Unknown';
+      
+      console.warn(`[Security] 🚨 BLOCKED: Access attempt with revoked token from IP: ${ip}`);
+
+      const reportEntry = `
+[${timestamp}] SECURITY INCIDENT: REVOKED TOKEN USAGE
+-----------------------------------------------------
+IP Address  : ${ip}
+Country     : ${country}
+User-Agent  : ${userAgent}
+Request     : ${req.method} ${req.originalUrl}
+Token       : ${token}
+Action      : BLOCKED & COOKIE CLEARED
+-----------------------------------------------------\n`;
+
+      // Define Log Directory: backend/logs
+      const logsDir = path.join(__dirname, '../logs');
+
+      // Ensure 'logs' directory exists
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir, { recursive: true });
+      }
+
+      // Path: backend/logs/blocked_attempts.txt
+      const reportPath = path.join(logsDir, 'blocked_attempts.txt');
+
+      fs.appendFile(reportPath, reportEntry, (err) => {
+        if (err) console.error('[Audit] Failed to write security report:', err);
+      });
+      // --- FORENSIC LOGGING END ---
+
+      res.clearCookie('session_id', { path: '/' });
+      return res.status(401).json({
+        error: 'Security Alert',
+        message: 'Session terminated by security policy. Access logged.'
+      });
     }
 
-    // 2. Query the database for revoked status
-    const result = await pool.query(
-      'SELECT id FROM token_blacklist WHERE token = $1', 
-      [token]
-    );
-
-    // 3. Deny access if the session identifier is blacklisted
-    if (result.rows.length > 0) {
-      console.warn(`[!] SECURITY ALERT: Revoked session access attempt.`);
-      
-      // Instruct client to clear local state by returning 401
-      return res.status(401).json({ 
-        message: 'This session has been terminated for security. Please re-authenticate.' 
-  });
-}
-
-    // 4. Session is valid; continue to the protected controller logic
     next();
   } catch (err) {
-    console.error('CRITICAL: Blacklist check failure:', err.message);
-    res.status(500).json({ message: 'Internal security synchronization error' });
+    console.error('CRITICAL: Blacklist Check Error:', err.message);
+    res.status(500).json({ message: 'Security check failed' });
   }
 };
 

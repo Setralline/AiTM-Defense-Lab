@@ -1,68 +1,104 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Frontend Navigation & Integrity Tests
- * These tests act as an automated "Sanity Check" for the Client UI.
- * They verify that the critical attack surfaces (Level 1 & Level 2) are reachable 
- * and render the correct login forms for the thesis experiments.
+ * ------------------------------------------------------------------
+ * PHISHING DEFENSE LAB - AUTOMATED UI TESTS
+ * ------------------------------------------------------------------
+ * These tests verify the accessibility and integrity of all authentication
+ * scenarios (Levels 1-5). They act as a "Sanity Check" to ensure the 
+ * thesis experiments are reachable and rendering correctly.
  */
-test.describe('Phishing Lab UI Navigation', () => {
+test.describe('Phishing Lab UI Navigation & Integrity', () => {
 
-  // Global Setup: Go to the landing page before each specific test
+  // Global Setup: Navigate to Mission Control before each test
   test.beforeEach(async ({ page }) => {
-    // Ensure your local client is running on port 5173 (Vite default)
+    // Ensure your local client is running (Default Vite Port: 5173)
     await page.goto('http://localhost:5173');
   });
 
   /**
-   * Test Case 1: Landing Page Integrity
-   * Ensures the system is online and displays the correct thesis branding.
+   * Test Case 0: Mission Control (Home)
+   * Verifies the landing page loads the correct thesis branding.
    */
-  test('Home Page - should display correct thesis branding', async ({ page }) => {
-    // Check for the browser tab title
-    await expect(page).toHaveTitle(/Phishing/);
-    
-    // Check for the main card title
-    // "SELECT MISSION" is the title in your Home.jsx Card
+  test('Home Page - should display Mission Control', async ({ page }) => {
+    await expect(page).toHaveTitle(/Phishing/i);
     await expect(page.getByText('SELECT MISSION')).toBeVisible();
+    await expect(page.getByText('UNAUTHORIZED ACCESS PROHIBITED')).toBeVisible();
   });
 
   /**
-   * Test Case 2: Level 1 (Legacy Auth) Accessibility
-   * Verifies that the "Legacy/Cookies" environment is accessible.
+   * Test Case 1: Level 1 (Legacy Cookies)
+   * Target: Vulnerable to Session Hijacking.
    */
-  test('Navigation - should navigate to Level 1 (Cookies)', async ({ page }) => {
-    // Click the button that contains the text "Level 1"
+  test('Level 1 - should navigate to Legacy Login', async ({ page }) => {
     await page.click('text=LEVEL 1: COOKIES');
-
-    // Verify the URL changes to /level1
+    
     await expect(page).toHaveURL(/.*level1/);
-
-    // Verify the Login Form appears (Check for "Identity Verification" title)
-    await expect(page.getByText('IDENTITY VERIFICATION')).toBeVisible();
-
-    // Verify input fields exist (Email & Password)
-    await expect(page.locator('input[name="email"]')).toBeVisible();
-    await expect(page.locator('input[name="password"]')).toBeVisible();
+    await expect(page.getByText('IDENTITY VERIFICATION')).toBeVisible(); // Check Card Title
+    
+    // Verify inputs specific to Level 1
+    await expect(page.getByPlaceholder('Email')).toBeVisible();
+    await expect(page.getByText('Remember terminal')).toBeVisible(); // Checkbox label
   });
 
   /**
-   * Test Case 3: Level 2 (Modern Auth) Accessibility
-   * Verifies that the "Modern/JWT" environment is accessible.
+   * Test Case 2: Level 2 (Modern JWT)
+   * Target: Vulnerable to Token Theft.
    */
-  test('Navigation - should navigate to Level 2 (Tokens)', async ({ page }) => {
-    // Click the button that contains the text "Level 2"
+  test('Level 2 - should navigate to Token Auth', async ({ page }) => {
     await page.click('text=LEVEL 2: TOKENS');
 
-    // Verify the URL changes to /level2
     await expect(page).toHaveURL(/.*level2/);
-
-    // Verify the Login Form appears (Check for "Token Authentication" title)
     await expect(page.getByText('TOKEN AUTHENTICATION')).toBeVisible();
-
-    // Verify the unique "Stay Persistent (JWT)" checkbox exists
-    // We search for the label text specifically
+    
+    // Verify specific JWT UI element
     await expect(page.getByText('Stay Persistent (JWT)')).toBeVisible();
+  });
+
+  /**
+   * Test Case 3: Level 3 (Header Defense)
+   * Target: Server-Side Proxy Detection.
+   */
+  test('Level 3 - should navigate to Header Analysis', async ({ page }) => {
+    await page.click('text=LEVEL 3: HEADER DEFENSE');
+
+    await expect(page).toHaveURL(/.*level3/);
+    await expect(page.getByText('HEADER ANALYSIS AUTH')).toBeVisible();
+    
+    // Button text should indicate analysis state
+    await expect(page.getByRole('button', { name: 'SECURE LOGIN' })).toBeVisible();
+  });
+
+  /**
+   * Test Case 4: Level 4 (Client Defense)
+   * Target: DOM-based Domain Guard.
+   */
+  test('Level 4 - should navigate to Domain Guard', async ({ page }) => {
+    await page.click('text=LEVEL 4: CLIENT DEFENSE');
+
+    await expect(page).toHaveURL(/.*level4/);
+    await expect(page.getByText('DOMAIN GUARD AUTH')).toBeVisible();
+    
+    // Verify the Client-Side defense component didn't crash the page on localhost
+    // (Since we are on localhost, the defense should allow access)
+    await expect(page.getByPlaceholder('Passcode')).toBeVisible();
+  });
+
+  /**
+   * Test Case 5: Level 5 (FIDO2 / WebAuthn)
+   * Target: Phishing Resistant Hardware Auth.
+   */
+  test('Level 5 - should navigate to FIDO2 Login', async ({ page }) => {
+    // Note: The button might have the class 'btn--secure-gold'
+    await page.click('text=LEVEL 5: FIDO2');
+
+    await expect(page).toHaveURL(/.*level5/);
+    
+    // Specific title for Level 5
+    await expect(page.getByText('OPERATIVE LOGIN')).toBeVisible();
+    
+    // Verify "Stay Persistent (1 Year)" specifically for Level 5
+    await expect(page.getByText('Stay Persistent (1 Year)')).toBeVisible();
   });
 
 });

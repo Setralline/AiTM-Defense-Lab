@@ -1,9 +1,15 @@
 const { Pool } = require('pg');
-require('dotenv').config();
+const config = require('./env');
 
-// Create a new pool using the connection string from .env
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+const pool = new Pool(config.db);
+
+pool.on('connect', () => {
+  // Optional: Console log on new connection
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+  process.exit(-1);
 });
 
 module.exports = pool;

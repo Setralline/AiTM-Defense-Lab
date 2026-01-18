@@ -2,77 +2,75 @@ import axios from 'axios';
 
 /**
  * ------------------------------------------------------------------
- * API GATEWAY CONFIGURATION
+ * API GATEWAY CONFIGURATION (AXIOS)
  * ------------------------------------------------------------------
- * This instance acts as the central communication bridge between 
- * the React Client (Victim UI) and the Node.js Backend.
+ * Central communication bridge between the Client (Victim UI) and the 
+ * Node.js Backend. Handles environment switching and global security policies.
  */
 
 // 1. Environment-Aware Base URL
-// UPDATED:
-// - Development (npm run dev): Connects directly to backend port 5000.
-// - Production (Docker/Nginx): Uses relative path ('') so Nginx proxies the request.
+// - Development: Connects explicitly to the backend port (5000).
+// - Production: Uses relative path ('') relying on Nginx/Docker reverse proxying.
 const BASE_URL = import.meta.env.MODE === 'production' 
-  ? '' // Empty string = Relative path (e.g., /auth/login)
+  ? '' 
   : 'http://localhost:5000';
 
 /**
  * Configured Axios Instance
- * Designed to support Hybrid Authentication (Cookies + Tokens).
+ * Supports Hybrid Authentication:
+ * 1. HttpOnly Cookies (Level 1) via 'withCredentials'.
+ * 2. Bearer Tokens (Level 2-5) via Authorization headers (injected dynamically).
  */
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
   
-  // CRITICAL: Enables transmission of HttpOnly cookies (Session ID) for Level 1.
+  // CRITICAL: Enables transmission of HttpOnly cookies (Session ID).
   withCredentials: true,
 
-  // NOTE: We deliberately removed the default 'Content-Type' header.
-  // This allows specific services (Level 1 vs Level 2) to define their own 
-  // payload types (Form Data vs JSON) without global conflicts.
+  // NOTE: 'Content-Type' is left undefined to allow automatic detection 
+  // (Form Data for Level 1 vs JSON for Level 2+).
   headers: {
-    'Accept': 'application/json', // We always expect structured JSON responses.
+    'Accept': 'application/json',
   },
 });
 
 /**
  * ------------------------------------------------------------------
- * RESPONSE INTERCEPTOR (The Security Guard)
+ * RESPONSE INTERCEPTOR (SECURITY GUARD)
  * ------------------------------------------------------------------
- * Handles global error states and enforces session termination policies.
+ * Enforces session termination policies and sanitizes error messages.
  */
 axiosInstance.interceptors.response.use(
   (response) => {
-    // If the request succeeds, pass the response through transparently.
+    // Transparently pass successful responses
     return response;
   },
   async (error) => {
     const originalRequest = error.config;
 
-    // CHECK: Is this error coming from the initial session check?
-    // If yes, we expect a 401 (user not logged in yet), so we SHOULD NOT redirect.
+    // CHECK: Is this error from the initial session hydration check?
+    // If yes, we expect a 401 (guest user), so we suppress the redirect.
     const isSessionCheck = originalRequest.url && originalRequest.url.includes('/auth/me');
 
     // 2. Active Session Termination Logic
-    // Only trigger if it's a real unauthorized error (not just a session check)
+    // If a legitimate request returns 401 (Unauthorized), the session is dead.
     if (error.response?.status === 401 && !originalRequest._retry && !isSessionCheck) {
-      console.warn('[Security Protocol] Session terminated by server. Purging local state.');
+      console.warn('[Security Protocol] Session invalidated by server. Purging local state.');
       
-      // A. Purge any stored tokens (Level 2 artifacts)
+      // A. Purge Client-Side Artifacts (Level 2-5 Tokens)
       localStorage.removeItem('auth_token');
       sessionStorage.removeItem('auth_token');
       
-      // B. Force Redirect to Home Base
-      // Redirect to '/' because '/login' does not exist in our routing map.
+      // B. Force Security Redirect
+      // Uses window.location to force a full browser refresh (clearing memory).
       if (window.location.pathname !== '/') {
         window.location.href = '/';
       }
     }
 
-    // 3. Error Sanitization (Security Best Practice)
-    // Extract a clean message for the UI to display, hiding raw server traces.
-    const cleanMessage = error.response?.data?.message || 'Connection to secure server failed.';
-    
-    // Attach the clean message to the error object for easy access in React components.
+    // 3. Error Sanitization
+    // Mask raw server errors with user-friendly messages for the UI.
+    const cleanMessage = error.response?.data?.message || 'Secure connection failed.';
     error.sanitizedMessage = cleanMessage;
     
     return Promise.reject(error);

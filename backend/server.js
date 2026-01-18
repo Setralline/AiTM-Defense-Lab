@@ -3,7 +3,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+const config = require('./config/env'); 
 
 const authRoutes = require('./routes/auth');
 const pool = require('./config/db');
@@ -19,28 +19,27 @@ const app = express();
 app.use(helmet());
 
 // 2. Cross-Origin Resource Sharing (CORS) Configuration
-// UPDATED: Now supports Docker environment variables via CORS_ORIGIN
-const whitelist = process.env.NODE_ENV === 'production' 
-  ? ['https://your-production-domain.com', process.env.CORS_ORIGIN] 
+// Now relies on the unified 'config.app.origin' from env.js
+const whitelist = config.app.env === 'production' 
+  ? [config.app.origin] 
   : [
-      'http://localhost:5173',      // Local Vite Dev
-      'http://127.0.0.1:5173',      // Local IP Dev
-      process.env.CORS_ORIGIN || 'http://localhost' // Docker / Nginx on Port 80
+      'http://localhost:5173',      // Vite Dev
+      'http://127.0.0.1:5173',      // IP Dev
+      config.app.origin             // Docker/Custom Origin
     ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // !origin allows server-to-server requests (like Postman or internal scripts)
-    // We check if the incoming origin exists in our whitelist array
-    if (whitelist.indexOf(origin) !== -1 || !origin) {
+    // Allow requests with no origin (like Postman/Mobile apps) or if in whitelist
+    if (!origin || whitelist.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.log('Blocked by CORS:', origin); // Optional: Log blocked requests
+      console.warn(`[Security] Blocked CORS request from: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true, // CRITICAL: Required to allow browser to send/receive HttpOnly cookies
-  methods: ['GET', 'POST', 'PUT', 'DELETE']
+  credentials: true, // Critical: Allows exchanging HttpOnly cookies
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 };
 
 app.use(cors(corsOptions));
@@ -48,58 +47,56 @@ app.use(cors(corsOptions));
 // 3. Body Parsers & Cookie Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: '10kb' }));        
-app.use(cookieParser()); // Enables reading and clearing HttpOnly cookies
+app.use(cookieParser());
 
-// 4. Global Rate Limiter - Prevents Brute Force attacks on the lab
+// 4. Global Rate Limiter - Prevents Brute Force attacks
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 100, 
-  message: 'Too many requests from this IP, please try again later.'
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: { message: 'Too many requests, please try again later.' }
 });
 app.use(limiter);
 
 // =========================================================================
 // Routes
 // =========================================================================
+
 app.use('/auth', authRoutes);
 
-// Health Check
+// Health Check Endpoint
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 // =========================================================================
-// Server Initialization & Database Connection
+// Server Initialization
 // =========================================================================
 
 const startServer = async () => {
   try {
     // 1. Test Database Connection
     const dbRes = await pool.query('SELECT NOW()');
-    console.log(`Database Connected: ${dbRes.rows[0].now}`);
+    console.log(`✅ Database Connected: ${dbRes.rows[0].now}`);
 
-    // 2. Initialize the database with the default admin (Lab persistence)
+    // 2. Initialize Database (Admin Account & Tables)
     await createInitialAdmin();
 
     // 3. Start Listening
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
+    app.listen(config.app.port, () => {
       console.log(`-----------------------------------------------`);
-      console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode`);
-      console.log(`Port: ${PORT}`);
+      console.log(`🚀 Server running in ${config.app.env} mode`);
+      console.log(`🔗 Listening on Port: ${config.app.port}`);
       console.log(`-----------------------------------------------`);
     });
 
   } catch (err) {
-    console.error('CRITICAL: Server startup failed:', err.message);
+    console.error('❌ CRITICAL: Server startup failed:', err.message);
     process.exit(1);
   }
 };
 
-// CRITICAL FIX FOR TESTING:
-// Only start the server if this file is run directly (node server.js).
-// If imported by Jest/Supertest, do NOT start listening automatically.
+// Only start the server if this file is run directly (not during tests)
 if (require.main === module) {
   startServer();
 }
 
-// Export app for testing
+// Export app for integration testing (Supertest)
 module.exports = app;

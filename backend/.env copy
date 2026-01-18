@@ -1,8 +1,13 @@
 PORT=5000
-# Database Connection String
-DATABASE_URL=postgres://postgres:00100010@localhost:5432/phishing_lab_db
-
-# Security Secrets (Use long, random strings in production)
-JWT_SECRET=super_secret_key_change_this_in_production
 NODE_ENV=development
-# NODE_ENV=production  <-- Uncomment this in AWS/Production
+
+
+DB_USER=postgres
+DB_PASSWORD=your db password
+DB_HOST=localhost
+DB_NAME=phishing_lab_db
+DB_PORT=5432
+
+# Security
+JWT_SECRET=super_secret_unified_key_2026
+CORS_ORIGIN=http://localhost:5173
