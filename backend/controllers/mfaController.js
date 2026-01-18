@@ -7,10 +7,14 @@ exports.enableMFA = async (req, res) => {
   try {
     const user = await User.findByEmail(email);
     const secret = speakeasy.generateSecret({ name: `CyberLab (${email})` });
+
+    // Save secret to DB
     await User.updateMfaSecret(user.id, secret.base32);
+
+    // Generate QR
     const qrImage = await qrcode.toDataURL(secret.otpauth_url);
     res.json({ success: true, secret: secret.base32, qrCode: qrImage });
-  } catch (err) { res.status(500).json({ message: 'Failed' }); }
+  } catch (err) { res.status(500).json({ message: 'MFA Setup Failed' }); }
 };
 
 exports.verifyMfa = async (req, res) => {
@@ -26,8 +30,8 @@ exports.verifyMfa = async (req, res) => {
     });
 
     if (verified) res.json({ success: true, user });
-    else res.status(400).json({ message: 'Invalid code' });
-  } catch (err) { res.status(500).json({ message: 'Error' }); }
+    else res.status(400).json({ message: 'Invalid 2FA Code' });
+  } catch (err) { res.status(500).json({ message: 'Verification Error' }); }
 };
 
 exports.disableMFA = async (req, res) => {
@@ -35,5 +39,5 @@ exports.disableMFA = async (req, res) => {
     const user = await User.findByEmail(req.body.email);
     await User.updateMfaSecret(user.id, null);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ message: 'Error' }); }
+  } catch (err) { res.status(500).json({ message: 'Error disabling MFA' }); }
 };

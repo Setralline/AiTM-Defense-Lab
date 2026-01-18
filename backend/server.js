@@ -3,7 +3,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const config = require('./config/env'); // ✅ استخدام الإعدادات المركزية
+const config = require('./config/env'); 
 
 const authRoutes = require('./routes/auth');
 const pool = require('./config/db');
@@ -15,11 +15,11 @@ const app = express();
 // Security Middleware (OWASP)
 // =========================================================================
 
-// 1. Secure HTTP Headers
+// 1. Secure HTTP Headers - Protects against well-known web vulnerabilities
 app.use(helmet());
 
-// 2. CORS Configuration
-// يعتمد الآن على config.app.origin الموحد في env.js
+// 2. Cross-Origin Resource Sharing (CORS) Configuration
+// Now relies on the unified 'config.app.origin' from env.js
 const whitelist = config.app.env === 'production' 
   ? [config.app.origin] 
   : [
@@ -30,7 +30,7 @@ const whitelist = config.app.env === 'production'
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // السماح بالطلبات بدون origin (مثل Postman) أو إذا كان ضمن القائمة البيضاء
+    // Allow requests with no origin (like Postman/Mobile apps) or if in whitelist
     if (!origin || whitelist.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -38,7 +38,7 @@ const corsOptions = {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true, // ضروري لتبادل الكوكيز (HttpOnly)
+  credentials: true, // Critical: Allows exchanging HttpOnly cookies
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 };
 
@@ -49,10 +49,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: '10kb' }));        
 app.use(cookieParser());
 
-// 4. Rate Limiter (Brute Force Protection)
+// 4. Global Rate Limiter - Prevents Brute Force attacks
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 دقيقة
-  max: 100, // 100 طلب لكل IP
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
   message: { message: 'Too many requests, please try again later.' }
 });
 app.use(limiter);
@@ -60,9 +60,10 @@ app.use(limiter);
 // =========================================================================
 // Routes
 // =========================================================================
+
 app.use('/auth', authRoutes);
 
-// Health Check
+// Health Check Endpoint
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 // =========================================================================
@@ -75,7 +76,7 @@ const startServer = async () => {
     const dbRes = await pool.query('SELECT NOW()');
     console.log(`✅ Database Connected: ${dbRes.rows[0].now}`);
 
-    // 2. Initialize Database (Admin & Tables)
+    // 2. Initialize Database (Admin Account & Tables)
     await createInitialAdmin();
 
     // 3. Start Listening
@@ -92,9 +93,10 @@ const startServer = async () => {
   }
 };
 
-// تشغيل السيرفر فقط إذا تم استدعاء الملف مباشرة (وليس أثناء الاختبارات)
+// Only start the server if this file is run directly (not during tests)
 if (require.main === module) {
   startServer();
 }
 
+// Export app for integration testing (Supertest)
 module.exports = app;

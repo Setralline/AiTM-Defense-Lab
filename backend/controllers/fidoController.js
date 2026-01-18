@@ -1,6 +1,6 @@
-const { 
+const {
   generateRegistrationOptions, verifyRegistrationResponse,
-  generateAuthenticationOptions, verifyAuthenticationResponse 
+  generateAuthenticationOptions, verifyAuthenticationResponse
 } = require('@simplewebauthn/server');
 const { isoBase64URL } = require('@simplewebauthn/server/helpers');
 const jwt = require('jsonwebtoken');
@@ -73,7 +73,7 @@ const fidoController = {
           userId: user.id
         });
         await User.enableFido(user.id);
-        
+
         // Return token so user stays logged in
         const token = jwt.sign({ id: user.id, email }, config.security.jwtSecret, { expiresIn: '1h' });
         res.json({ verified: true, token, user });

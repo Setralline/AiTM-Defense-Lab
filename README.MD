@@ -1,136 +1,141 @@
-# Phishing Defense Lab (AiTM Simulation)
+# Backend API - Phishing Defense Lab
 
-<div align="center">
-<img src="./client/src/assets/logo.svg" alt="App Icon" width="120" />
-</div>
+**Master's Thesis Component | Osamah Amer (2026)**
 
-**Master's Thesis Project by Osamah Amer (2026)**
+The Backend API serves as the core security engine for the Phishing Defense Lab. Built on Node.js and Express, it implements a **Layered Architecture** to simulate various authentication protocols—ranging from vulnerable legacy systems to robust, hardware-bound defenses (FIDO2).
 
-Welcome to the central repository for the Phishing Defense Lab. This project is a controlled environment designed to simulate and analyze modern **Adversary-in-the-Middle (AiTM)** attacks, specifically focusing on how reverse proxies like Evilginx2 interact with different authentication levels.
+Unlike standard web applications, this backend is specifically engineered to analyze **Adversary-in-the-Middle (AiTM)** attacks. It features a custom "Active Revocation" system that allows for the immediate neutralization of stolen session identifiers, a critical defense mechanism against modern phishing proxies like Evilginx2.
 
 ---
 
-## Deployment via Docker
+## System Architecture
 
-This project is fully containerized to ensure consistency across development and production environments. Using **Docker Compose**, you can spin up the Frontend (React/Nginx), Backend (Node.js), and Database (PostgreSQL) with a single command.
+The application follows a strict **Separation of Concerns (SoC)** design pattern to ensure maintainability and security auditing:
+
+* **Config Layer:** Centralized environment configuration (`config/env.js`) to prevent secret leakage and ensure consistency across the application.
+* **Controller Layer:** Handles the business logic for different authentication "Levels" (Legacy, Modern, FIDO).
+* **Model Layer:** Encapsulates direct SQL interactions with PostgreSQL, preventing SQL injection via parameterized queries.
+* **Security Middleware:** Intercepts requests to enforce rate limiting, proxy detection, and session validity checks.
+
+---
+
+## Core Security Features
+
+### 1. Hybrid Authentication Protocols
+The system simultaneously supports multiple authentication standards to simulate real-world heterogeneous environments:
+* **Level 1 (Legacy):** Stateful session management using `HttpOnly` cookies.
+* **Level 2 (Modern):** Stateless-style authentication using JSON Web Tokens (JWT).
+* **Level 5 (FIDO2):** Hardware-bound passwordless authentication using WebAuthn.
+
+### 2. Active Session Revocation (ASR)
+Standard JWT implementations are stateless and difficult to revoke without key rotation. This project implements a **Database-Backed Blacklist** (`token_blacklist` table). When a user logs out or a threat is detected:
+1.  The specific token signature is hashed and stored in PostgreSQL.
+2.  The `checkBlacklist` middleware intercepts all subsequent requests.
+3.  Even if an attacker possesses a valid, unexpired token (stolen via AiTM), the server rejects it immediately.
+
+### 3. AiTM & Proxy Defense
+* **Host Header Analysis:** The `detectProxy` middleware inspects the `Host` header to identify discrepancies common in reverse proxy attacks.
+* **Origin Binding:** FIDO2 credentials are cryptographically bound to the origin domain, rendering relayed challenges useless to an attacker.
+
+---
+
+## Technical Stack
+
+* **Runtime:** Node.js (v20 LTS)
+* **Framework:** Express.js
+* **Database:** PostgreSQL 15
+* **Cryptography:** `bcryptjs` (Hashing), `jsonwebtoken` (Signing), `@simplewebauthn/server` (FIDO2)
+* **Testing:** Jest & Supertest
+
+---
+
+## Setup & Installation
 
 ### Prerequisites
-* [Docker Desktop](https://www.docker.com/products/docker-desktop) installed (for local run).
-* **AWS EC2** instance (for production).
+* Node.js v18+ installed.
+* PostgreSQL running locally or via Docker.
 
-### 1. Run Locally (Development & Testing)
-This will build the images and start the services on a unified network. Nginx will serve the application on port `80`.
-
-```bash
-# Start all services in detached mode
-docker-compose up --build -d
-
-# View logs (optional)
-docker-compose logs -f
-
-```
-
-> **Access the Lab:** Open your browser and navigate to `http://localhost`
-
-### 2. Run in Production (AWS/VPS) - Automated
-
-For production deployment with SSL (HTTPS) and auto-configuration, we provide an automated script.
-
-**⚠️ Prerequisite:**
-Before running the script, ensure you have:
-
-1. Associated an **Elastic IP** with your AWS EC2 instance.
-2. Linked your **Domain Name** (A Record) to that Elastic IP in your DNS provider (e.g., Namecheap).
-
-**Deployment Steps:**
-Simply run the included setup script. It will handle System Updates, Docker Installation, SSL Certificates (Let's Encrypt), and Nginx Configuration automatically.
-
-```bash
-# 1. Give execution permission (first time only)
-chmod +x setup.sh
-
-# 2. Run the script
-./setup.sh
-
-```
-
-> The script will ask for your domain name and configure the entire lab automatically.
-
-### 3. Stop the Environment
-
-To stop all containers and remove the network:
-
-```bash
-docker-compose down
-
-```
-
----
-
-## Automated Testing & QA
-
-This project maintains rigorous quality standards using a CI/CD pipeline (GitHub Actions). You can also run these tests locally to verify system integrity.
-
-### Backend Security Tests (Jest & Supertest)
-
-Validates the API endpoints, authentication logic (Level 1 vs Level 2), and database interactions.
+### 1. Install Dependencies
+Navigate to the backend directory and install the required packages:
 
 ```bash
 cd backend
+npm install
+
+```
+
+### 2. Environment Configuration
+
+Create a `.env` file in the root of the backend directory. You can copy the structure from the provided example:
+
+```env
+PORT=5000
+NODE_ENV=development
+
+# Database Connection
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_HOST=localhost
+DB_NAME=phishing_lab_db
+DB_PORT=5432
+
+# Security Secrets
+JWT_SECRET=complex_random_string_for_signing_tokens
+RP_ID=localhost
+CORS_ORIGIN=http://localhost:5173
+
+```
+
+### 3. Database Initialization
+
+The system includes an auto-initialization script. When you start the server, it will automatically check for the existence of the admin account and necessary tables.
+
+```bash
+# Start the server in development mode
+npm run dev
+
+```
+
+---
+
+## API Overview
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| **POST** | `/auth/level1` | Legacy login. Returns `HttpOnly` cookie. |
+| **POST** | `/auth/level2` | Modern login. Returns JWT in JSON body. |
+| **GET** | `/auth/me` | Validates session and returns user profile. Protected by Blacklist. |
+| **POST** | `/auth/logout` | Terminates session and adds token to the Blacklist. |
+| **POST** | `/auth/fido/register/start` | Initiates WebAuthn registration ceremony. |
+| **POST** | `/auth/fido/login/start` | Initiates WebAuthn authentication ceremony. |
+
+---
+
+## Testing
+
+The project includes a comprehensive test suite covering API integration and security logic.
+
+```bash
+# Run all security tests
 npm test
 
 ```
 
-### Client E2E Tests (Playwright)
-
-Simulates a real user navigating through the application. It verifies that critical attack surfaces (Login Forms, Dashboard) are rendered correctly.
+Specific security verification scripts are also available in the `utils/` folder to simulate replay attacks:
 
 ```bash
-cd client
-# Install browsers (first time only)
-npx playwright install
+# Verify Cookie Replay Defense
+node utils/test-security.js
 
-# Run the navigation tests
-npx playwright test
+# Verify JWT Replay Defense
+node utils/test-security-level2.js
 
 ```
 
 ---
 
-## Project Structure
+## Disclaimer
 
-This laboratory is architected into two distinct tiers:
+This software is a research prototype developed for educational purposes. It demonstrates both vulnerabilities and defenses. Do not use the attack simulation components on networks or systems you do not own or have explicit permission to test.
 
-* **[Backend API (Node.js/Express)](./backend/README.MD):** Handles the core security logic, including Hybrid Auth strategies, global rate limiting, and the **Active Session Revocation** engine.
-* **[Client Interface (React 19)](./client/README.MD):** A modern dashboard that acts as the "victim" application. It implements specific vulnerabilities (XSS surfaces in Level 2) and defenses (HttpOnly Cookies in Level 1) to test AiTM resilience.
-
----
-
-## Lab Missions
-
-* **Level 1 (Legacy/Cookies):** Simulates enterprise environments using `application/x-www-form-urlencoded` payloads and **HttpOnly cookies**. This level tests defenses against XSS but remains vulnerable to proxy-based session cookie theft.
-* **Level 2 (Modern/Tokens):** Simulates modern SPA authentication using `application/json` payloads and **JWTs stored in LocalStorage**. This level allows for testing token theft via XSS and analyzing the efficacy of short-lived tokens.
-* **MFA Module:** Integrated TOTP logic to analyze how multi-factor authentication acts as a secondary barrier against real-time session hijacking.
-
----
-
-## Key Security Features
-
-* **Active Session Revocation (Blacklisting):** Unlike standard stateless JWT implementations, this lab features a server-side revocation list. Upon logout, session identifiers are blacklisted in PostgreSQL, neutralizing stolen tokens immediately.
-* **Hybrid Protocol Support:** The architecture dynamically handles diverse data streams—enforcing `x-www-form-urlencoded` for legacy tiers and `application/json` for modern tiers—to accurately simulate heterogeneous corporate environments.
-* **Synchronized Termination Logic:** Implements a robust "Kill Switch" protocol that simultaneously purges client-side storage and invokes server-side revocation, ensuring total session death across the network.
-
----
-
-## Future Roadmap
-
-* **Evilginx & Proxy Fingerprinting:** Detecting reverse proxies via TLS fingerprinting and header analysis.
-* **HTTP Header Security:** Identifying unauthorized `X-Forwarded-For` anomalies.
-* **Base URI Detection:** Detecting DOM-based phishing injections via JavaScript.
-
----
-
-## ⚠️ Disclaimer
-
-This software is developed strictly for **educational and research purposes** as part of a Master's Thesis. It contains intentional configurations to simulate vulnerabilities. Please use it responsibly within a controlled, isolated environment.
 
