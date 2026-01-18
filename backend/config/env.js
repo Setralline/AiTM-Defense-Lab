@@ -15,6 +15,7 @@ module.exports = {
     expectedOrigin: 'http://localhost:5173'
   },
   db: {
+    connectionString: process.env.DATABASE_URL,
     user: process.env.DB_USER || 'postgres',
     host: process.env.DB_HOST || 'localhost',
     database: process.env.DB_NAME || 'phishing_lab_db',

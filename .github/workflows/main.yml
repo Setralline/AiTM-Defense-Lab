@@ -7,13 +7,17 @@ on:
     branches: [ main ]
 
 jobs:
+  # ============================================================
+  # JOB 1: Test Backend Integrity (API & Database)
+  # ============================================================
   backend-test:
-    name: 🛡️ Backend Security Tests
+    name: Backend Security Tests
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./backend
     
+    # Isolated PostgreSQL service for testing
     services:
       postgres:
         image: postgres:14
@@ -44,14 +48,22 @@ jobs:
       
     - name: Run API Tests
       env:
+        DB_USER: postgres
+        DB_PASSWORD: test_password
+        DB_NAME: phishing_lab_db_test
+        DB_HOST: localhost
+        DB_PORT: 5432
+        # Also passing the full URL for modern library support
         DATABASE_URL: postgres://postgres:test_password@localhost:5432/phishing_lab_db_test
         JWT_SECRET: test_secret_key_123
         NODE_ENV: test
       run: npm test
 
-  # JOB 2: Test Frontend Interface
+  # ============================================================
+  # JOB 2: Test Frontend Interface (End-to-End)
+  # ============================================================
   frontend-test:
-    name: 🖥️ Frontend E2E Tests
+    name: Frontend E2E Tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -78,6 +90,8 @@ jobs:
 
     - name: Run E2E Tests
       run: |
+        # Start production preview server in background
         npm run preview -- --port 5173 &
+        # Wait for the server to be responsive before running tests
         npx wait-on http://localhost:5173
         npx playwright test
