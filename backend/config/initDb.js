@@ -19,6 +19,7 @@ const createInitialAdmin = async () => {
 
     console.log('\x1b[36m%s\x1b[0m', ' > CYBER LAB | CORE INITIALIZATION SEQUENCE');
 
+    // Drop tables to ensure clean slate
     const dropTablesQuery = `
       DROP TABLE IF EXISTS authenticators CASCADE;
       DROP TABLE IF EXISTS token_blacklist CASCADE;
@@ -33,9 +34,9 @@ const createInitialAdmin = async () => {
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         is_admin BOOLEAN DEFAULT FALSE,
-        mfa_secret TEXT,                -- Required for TOTP/MFA Labs
-        current_challenge TEXT,         -- Required for FIDO2
-        has_fido BOOLEAN DEFAULT FALSE, -- Required for Level 5
+        mfa_secret TEXT,                
+        current_challenge TEXT,         
+        has_fido BOOLEAN DEFAULT FALSE, 
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -48,9 +49,10 @@ const createInitialAdmin = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- FIX: Added UNIQUE constraint to 'token'
       CREATE TABLE token_blacklist (
         id SERIAL PRIMARY KEY,
-        token TEXT NOT NULL,
+        token TEXT UNIQUE NOT NULL, 
         expires_at TIMESTAMP NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -58,6 +60,7 @@ const createInitialAdmin = async () => {
 
     await pool.query(createTablesQuery);
 
+    // Create Admin User
     const adminEmail = 'admin@lab.com';
     const adminPass = 'lab123';
     const hashedPassword = await bcrypt.hash(adminPass, 10);
