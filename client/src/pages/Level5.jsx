@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FaFingerprint, FaKey, FaArrowLeft, FaUserAstronaut, FaTrashAlt } from 'react-icons/fa';
-import authService from '../../services/authService';
 
-// UI Components (BEM Architecture)
-import Card from '../layout/Card';
-import InputGroup from '../ui/InputGroup';
-import Button from '../ui/Button';
-import Checkbox from '../ui/Checkbox';
-import Dashboard from './Dashboard';
+import authService from '../services/authService';
+import Card from '../components/layout/Card';
+import InputGroup from '../components/ui/InputGroup';
+import Button from '../components/ui/Button';
+import Checkbox from '../components/ui/Checkbox';
+import Dashboard from '../components/features/Dashboard';
 
 /**
  * ------------------------------------------------------------------
@@ -28,12 +27,11 @@ const Level5 = ({ user, setUser }) => {
   // Steps: 1 = Password Check, 2 = Hardware Challenge
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Note: 'code' is removed as we are not using TOTP here
-  const [formData, setFormData] = useState({ 
-    email: '', 
-    password: '', 
-    rememberMe: false 
+
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    rememberMe: false
   });
 
   // =========================================================================
@@ -82,8 +80,8 @@ const Level5 = ({ user, setUser }) => {
 
     try {
       const res = await authService.fidoLoginWithPassword(
-        formData.email.trim(), 
-        formData.password, 
+        formData.email.trim(),
+        formData.password,
         formData.rememberMe
       );
 
@@ -174,7 +172,7 @@ const Level5 = ({ user, setUser }) => {
         <p style={{ marginBottom: '15px', fontSize: '0.9rem', color: '#8892b0' }}>
           Manage your WebAuthn/FIDO2 authenticators.
         </p>
-        
+
         {user.has_fido ? (
           <Button onClick={handleDisableKey} variant="danger" fullWidth>
             <FaTrashAlt /> DISABLE FIDO KEY
@@ -191,31 +189,31 @@ const Level5 = ({ user, setUser }) => {
   return (
     <Card title={step === 1 ? "OPERATIVE LOGIN" : "HARDWARE CHALLENGE"}>
       <form onSubmit={step === 1 ? handlePasswordLogin : (e) => e.preventDefault()}>
-        
+
         {/* Step 1: Password Entry */}
         {step === 1 && (
           <>
-            <InputGroup 
-              icon={<FaUserAstronaut />} 
-              type="email" 
-              name="email" 
-              placeholder="Email" 
-              onChange={handleChange} 
-              required 
+            <InputGroup
+              icon={<FaUserAstronaut />}
+              type="email"
+              name="email"
+              placeholder="Email"
+              onChange={handleChange}
+              required
             />
-            <InputGroup 
-              icon={<FaKey />} 
-              type="password" 
-              name="password" 
-              placeholder="Passcode" 
-              onChange={handleChange} 
-              required 
+            <InputGroup
+              icon={<FaKey />}
+              type="password"
+              name="password"
+              placeholder="Passcode"
+              onChange={handleChange}
+              required
             />
-            <Checkbox 
-              label="Stay Persistent (1 Year)" 
-              name="rememberMe" 
-              checked={formData.rememberMe} 
-              onChange={handleChange} 
+            <Checkbox
+              label="Stay Persistent (1 Year)"
+              name="rememberMe"
+              checked={formData.rememberMe}
+              onChange={handleChange}
             />
           </>
         )}
@@ -223,13 +221,14 @@ const Level5 = ({ user, setUser }) => {
         {/* Step 2: FIDO2 Interaction UI */}
         {step === 2 && (
           <div className="animate-fade-in" style={{ textAlign: 'center', padding: '20px 0' }}>
-            <FaFingerprint 
-              style={{ 
-                fontSize: '4rem', 
-                marginBottom: '20px', 
+
+            <FaFingerprint
+              style={{
+                fontSize: '4rem',
+                marginBottom: '20px',
                 color: 'var(--cyber-green)',
                 filter: 'drop-shadow(0 0 15px rgba(0,255,65,0.4))'
-              }} 
+              }}
             />
             <p className="home-desc" style={{ marginBottom: '10px' }}>
               Security Key Detected.
@@ -247,20 +246,20 @@ const Level5 = ({ user, setUser }) => {
               {isLoading ? 'PROCESSING...' : 'INITIATE'}
             </Button>
           ) : (
-            <Button 
-              type="button" 
-              onClick={handleFidoVerify} 
-              variant="primary" 
+            <Button
+              type="button"
+              onClick={handleFidoVerify}
+              variant="primary"
               fullWidth
             >
               ACTIVATE KEY
             </Button>
           )}
 
-          <Button 
-            type="button" 
-            variant="secondary" 
-            onClick={() => step === 1 ? navigate('/') : setStep(1)} 
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => step === 1 ? navigate('/') : setStep(1)}
             fullWidth
           >
             <FaArrowLeft /> {step === 1 ? 'RETURN TO BASE' : 'CANCEL'}

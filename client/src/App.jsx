@@ -4,13 +4,13 @@ import { Toaster } from 'react-hot-toast';
 import authService from './services/authService';
 import { toasterOptions } from './utils/themeStyles';
 
-import AdminPanel from './components/features/AdminPanel';
-import Home from './components/features/Home';
-import Level1 from './components/features/Level1';
-import Level2 from './components/features/Level2';
-import Level3 from './components/features/Level3'; 
-import Level4 from './components/features/Level4';
-import Level5 from './components/features/Level5';
+import Home from './pages/Home';
+import AdminPanel from './pages/AdminPanel';
+import Level1 from './pages/Level1';
+import Level2 from './pages/Level2';
+import Level3 from './pages/Level3';
+import Level4 from './pages/Level4';
+import Level5 from './pages/Level5';
 import Footer from './components/layout/Footer';
 
 const App = () => {

@@ -1,41 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FaUserAstronaut, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa';
-import authService from '../../services/authService';
+import { FaUserShield, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa';
+import authService from '../services/authService';
 
 // UI Components (BEM Architecture)
-import Card from '../layout/Card';
-import InputGroup from '../ui/InputGroup';
-import Button from '../ui/Button';
-import Checkbox from '../ui/Checkbox';
-import Dashboard from './Dashboard';
+import Card from '../components/layout/Card';
+import InputGroup from '../components/ui/InputGroup';
+import Button from '../components/ui/Button';
+import Checkbox from '../components/ui/Checkbox';
+import Dashboard from '../components/features/Dashboard';
 
 /**
  * ------------------------------------------------------------------
- * LEVEL 2: MODERN AUTHENTICATION SIMULATION (JWT)
+ * LEVEL 3: SERVER-SIDE DEFENSE (HEADER ANALYSIS)
  * ------------------------------------------------------------------
- * Simulates a modern Single Page Application (SPA) environment.
- * * Security Characteristics:
- * - Transmission: application/json (Modern standard)
- * - Storage: LocalStorage or SessionStorage (Client-managed)
- * - Vulnerability: Susceptible to XSS attacks (Token Exfiltration)
- * - Persistence: Handled via the 'Remember Me' flag in authService.
+ * Structurally identical to Level 2 (SPA/JWT) regarding the frontend flow,
+ * but targets a specific backend endpoint ('v3') that enforces strict 
+ * Host Header analysis to detect and block Reverse Proxy anomalies.
+ * * * Security Characteristics:
+ * - Transmission: application/json
+ * - Defense: Server-side Middleware (detectProxy.js)
+ * - Persistence: Handled via centralized authService.
  */
-const Level2 = ({ user, setUser }) => {
+const Level3 = ({ user, setUser }) => {
   const navigate = useNavigate();
-  
+
   // =========================================================================
   // STATE MANAGEMENT
   // =========================================================================
   const [step, setStep] = useState(1); // 1: Credentials, 2: MFA
   const [isLoading, setIsLoading] = useState(false);
-  const [tempToken, setTempToken] = useState(''); // Temporary token for MFA handover
-  const [formData, setFormData] = useState({ 
-    email: '', 
-    password: '', 
-    code: '', 
-    rememberMe: false 
+  const [tempToken, setTempToken] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    code: '',
+    rememberMe: false
   });
 
   // =========================================================================
@@ -48,7 +49,7 @@ const Level2 = ({ user, setUser }) => {
         const data = await authService.getCurrentUser();
         if (isMounted && data.user) setUser(data.user);
       } catch (err) {
-        // Silent failure expected if no session exists
+        // Silent failure expected
       }
     };
     checkSession();
@@ -69,37 +70,37 @@ const Level2 = ({ user, setUser }) => {
    * Defined BEFORE usage to prevent ReferenceErrors.
    */
   const finalizeLogin = (res, tId) => {
-    // Note: authService has already handled token storage.
-    // We only need to update the UI state here.
+    // Auth logic is handled by the service. We just update the UI.
     const { user: userData } = res;
     setUser(userData);
-    toast.success(`Access Granted. Welcome, ${userData.name}`, { id: tId });
+    toast.success(`Secure Connection Established. Welcome, ${userData.name}`, { id: tId });
   };
 
   /**
    * Main Login Flow
-   * Handles both initial credential exchange and secondary MFA verification.
+   * Targets the 'v3' endpoint which includes the Proxy Detection Middleware.
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    const tId = toast.loading(step === 1 ? 'Handshaking...' : 'Validating MFA payload...');
+    const tId = toast.loading(step === 1 ? 'Analyzing Headers...' : 'Validating MFA...');
 
     try {
       if (step === 1) {
         // ---------------------------------------------------
-        // STEP A: INITIAL CREDENTIAL EXCHANGE
+        // STEP A: CREDENTIALS (TARGETING V3 ENDPOINT)
         // ---------------------------------------------------
-        const res = await authService.loginLevel2({
-          email: formData.email.trim(),
-          password: formData.password,
-          rememberMe: formData.rememberMe // Critical: pass persistence preference
-        });
+        const res = await authService.loginModern(
+          formData.email.trim(),
+          formData.password,
+          'v3', // <--- Critical: Targets /auth/level3 (Protected Endpoint)
+          formData.rememberMe
+        );
 
         if (res.mfa_required) {
           setTempToken(res.temp_token);
           setStep(2);
-          toast.success('Credentials verified. Awaiting MFA.', { id: tId });
+          toast.success('Headers Valid. Credentials Verified.', { id: tId });
         } else {
           finalizeLogin(res, tId);
         }
@@ -111,29 +112,30 @@ const Level2 = ({ user, setUser }) => {
           email: formData.email.trim(),
           code: formData.code.trim(),
           temp_token: tempToken,
-          rememberMe: formData.rememberMe // Ensure MFA flow also respects persistence
+          rememberMe: formData.rememberMe
         });
-        
+
         if (res.success) finalizeLogin(res, tId);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Token Rejected.', { id: tId });
+      // If blocked by Lab 3 defense, err.message will contain the specific security warning
+      toast.error(err.response?.data?.message || 'Access Denied: Potential Proxy Detected.', { id: tId });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleLogout = async () => {
-    const tId = toast.loading('Revoking JWT...');
+    const tId = toast.loading('Terminating Session...');
     try {
       await authService.logout();
     } catch (err) {
-      console.error('Revocation failed:', err);
+      console.error('Logout failed:', err);
     } finally {
       setUser(null);
       setStep(1);
-      toast.success('Token Revoked & Session Terminated.', { id: tId, icon: '🔑' });
-      navigate('/level2');
+      toast.success('Session Closed.', { id: tId, icon: '🔒' });
+      navigate('/level3');
     }
   };
 
@@ -141,61 +143,59 @@ const Level2 = ({ user, setUser }) => {
   // 3. UI RENDERING
   // =========================================================================
 
-  // If authenticated, show the Dashboard "Victim" View
   if (user) return <Dashboard user={user} setUser={setUser} onLogout={handleLogout} />;
 
   return (
-    <Card title={step === 1 ? "TOKEN AUTHENTICATION" : "2-FACTOR AUTH"}>
+    <Card title={step === 1 ? "HEADER ANALYSIS AUTH" : "2-FACTOR AUTH"}>
       <form onSubmit={handleSubmit}>
         {step === 1 ? (
           <>
-            <InputGroup 
-              icon={<FaUserAstronaut />} 
-              type="email" 
-              name="email" 
-              placeholder="Email" 
-              onChange={handleChange} 
-              required 
+            <InputGroup
+              icon={<FaUserShield />}
+              type="email"
+              name="email"
+              placeholder="Email"
+              onChange={handleChange}
+              required
             />
-            <InputGroup 
-              icon={<FaKey />} 
-              type="password" 
-              name="password" 
-              placeholder="Passcode" 
-              onChange={handleChange} 
-              required 
+            <InputGroup
+              icon={<FaKey />}
+              type="password"
+              name="password"
+              placeholder="Passcode"
+              onChange={handleChange}
+              required
             />
-            
-            {/* Persistence Option (JWT in LocalStorage vs SessionStorage) */}
-            <Checkbox 
-              label="Stay Persistent (JWT)" 
-              name="rememberMe" 
-              checked={formData.rememberMe} 
-              onChange={handleChange} 
+
+            <Checkbox
+              label="Stay Persistent (JWT)"
+              name="rememberMe"
+              checked={formData.rememberMe}
+              onChange={handleChange}
             />
           </>
         ) : (
-          <InputGroup 
-            icon={<FaShieldAlt />} 
-            type="text" 
-            name="code" 
-            placeholder="6-Digit Token" 
-            onChange={handleChange} 
-            maxLength={6} 
-            highlight 
-            autoFocus 
+          <InputGroup
+            icon={<FaShieldAlt />}
+            type="text"
+            name="code"
+            placeholder="6-Digit Token"
+            onChange={handleChange}
+            maxLength={6}
+            highlight
+            autoFocus
           />
         )}
 
         <div className="form-actions">
           <Button type="submit" disabled={isLoading} fullWidth>
-            {isLoading ? 'PROCESSING...' : (step === 1 ? 'INITIATE' : 'VERIFY')}
+            {isLoading ? 'ANALYZING...' : (step === 1 ? 'SECURE LOGIN' : 'VERIFY')}
           </Button>
-          <Button 
-            type="button" 
-            variant="secondary" 
-            onClick={() => navigate('/')} 
-            fullWidth 
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate('/')}
+            fullWidth
           >
             <FaArrowLeft /> RETURN TO BASE
           </Button>
@@ -205,4 +205,4 @@ const Level2 = ({ user, setUser }) => {
   );
 };
 
-export default Level2;
+export default Level3;

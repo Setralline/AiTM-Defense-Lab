@@ -2,40 +2,40 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FaUserAstronaut, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa';
-import authService from '../../services/authService';
+import authService from '../services/authService';
 
 // UI Components (BEM Architecture)
-import Card from '../layout/Card';
-import InputGroup from '../ui/InputGroup';
-import Button from '../ui/Button';
-import Checkbox from '../ui/Checkbox';
-import Dashboard from './Dashboard';
+import Card from '../components/layout/Card';
+import InputGroup from '../components/ui/InputGroup';
+import Button from '../components/ui/Button';
+import Checkbox from '../components/ui/Checkbox';
+import Dashboard from '../components/features/Dashboard';
 
 /**
  * ------------------------------------------------------------------
- * LEVEL 1: LEGACY AUTHENTICATION SIMULATION
+ * LEVEL 2: MODERN AUTHENTICATION SIMULATION (JWT)
  * ------------------------------------------------------------------
- * Simulates a traditional enterprise web application environment.
+ * Simulates a modern Single Page Application (SPA) environment.
  * * Security Characteristics:
- * - Transmission: application/x-www-form-urlencoded (Legacy standard)
- * - Storage: HttpOnly Cookies (Browser-managed)
- * - Defense: Vulnerable to CSRF (if not protected) and Proxy interception.
- * - Persistence: Controlled by the 'Remember Me' flag affecting Cookie Max-Age.
+ * - Transmission: application/json (Modern standard)
+ * - Storage: LocalStorage or SessionStorage (Client-managed)
+ * - Vulnerability: Susceptible to XSS attacks (Token Exfiltration)
+ * - Persistence: Handled via the 'Remember Me' flag in authService.
  */
-const Level1 = ({ user, setUser }) => {
+const Level2 = ({ user, setUser }) => {
   const navigate = useNavigate();
-  
+
   // =========================================================================
   // STATE MANAGEMENT
   // =========================================================================
   const [step, setStep] = useState(1); // 1: Credentials, 2: MFA
   const [isLoading, setIsLoading] = useState(false);
   const [tempToken, setTempToken] = useState(''); // Temporary token for MFA handover
-  const [formData, setFormData] = useState({ 
-    email: '', 
-    password: '', 
-    code: '', 
-    rememberMe: false 
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    code: '',
+    rememberMe: false
   });
 
   // =========================================================================
@@ -69,8 +69,11 @@ const Level1 = ({ user, setUser }) => {
    * Defined BEFORE usage to prevent ReferenceErrors.
    */
   const finalizeLogin = (res, tId) => {
-    setUser(res.user);
-    toast.success(`Access Granted. Welcome, ${res.user.name}`, { id: tId });
+    // Note: authService has already handled token storage.
+    // We only need to update the UI state here.
+    const { user: userData } = res;
+    setUser(userData);
+    toast.success(`Access Granted. Welcome, ${userData.name}`, { id: tId });
   };
 
   /**
@@ -80,25 +83,23 @@ const Level1 = ({ user, setUser }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    const tId = toast.loading(step === 1 ? 'Verifying Identity...' : 'Validating MFA...');
+    const tId = toast.loading(step === 1 ? 'Handshaking...' : 'Validating MFA payload...');
 
     try {
       if (step === 1) {
         // ---------------------------------------------------
-        // STEP A: LEGACY FORM SUBMISSION
+        // STEP A: INITIAL CREDENTIAL EXCHANGE
         // ---------------------------------------------------
-        // Mimic legacy behavior using URLSearchParams
-        const params = new URLSearchParams();
-        params.append('email', formData.email.trim());
-        params.append('password', formData.password);
-        params.append('rememberMe', formData.rememberMe); // Backend sets Cookie Max-Age based on this
+        const res = await authService.loginLevel2({
+          email: formData.email.trim(),
+          password: formData.password,
+          rememberMe: formData.rememberMe // Critical: pass persistence preference
+        });
 
-        const res = await authService.loginLevel1(params);
-        
         if (res.mfa_required) {
           setTempToken(res.temp_token);
           setStep(2);
-          toast.success('MFA Required. Please check your authenticator.', { id: tId });
+          toast.success('Credentials verified. Awaiting MFA.', { id: tId });
         } else {
           finalizeLogin(res, tId);
         }
@@ -106,33 +107,33 @@ const Level1 = ({ user, setUser }) => {
         // ---------------------------------------------------
         // STEP B: MFA VERIFICATION
         // ---------------------------------------------------
-        const res = await authService.verifyMfa({ 
-          email: formData.email.trim(), 
-          code: formData.code.trim(), 
+        const res = await authService.verifyMfa({
+          email: formData.email.trim(),
+          code: formData.code.trim(),
           temp_token: tempToken,
-          rememberMe: formData.rememberMe // Ensure MFA flow also respects persistence preference
+          rememberMe: formData.rememberMe // Ensure MFA flow also respects persistence
         });
-        
+
         if (res.success) finalizeLogin(res, tId);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Access Denied.', { id: tId });
-    } finally { 
-      setIsLoading(false); 
+      toast.error(err.response?.data?.message || 'Token Rejected.', { id: tId });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleLogout = async () => {
-    const tId = toast.loading('Terminating session...');
+    const tId = toast.loading('Revoking JWT...');
     try {
       await authService.logout();
     } catch (err) {
-      console.error('Logout failed:', err);
+      console.error('Revocation failed:', err);
     } finally {
       setUser(null);
       setStep(1);
-      toast.success('Session Revoked.', { id: tId, icon: '🛡️' });
-      navigate('/level1');
+      toast.success('Token Revoked & Session Terminated.', { id: tId, icon: '🔑' });
+      navigate('/level2');
     }
   };
 
@@ -144,45 +145,45 @@ const Level1 = ({ user, setUser }) => {
   if (user) return <Dashboard user={user} setUser={setUser} onLogout={handleLogout} />;
 
   return (
-    <Card title={step === 1 ? "IDENTITY VERIFICATION" : "2-FACTOR AUTH"}>
+    <Card title={step === 1 ? "TOKEN AUTHENTICATION" : "2-FACTOR AUTH"}>
       <form onSubmit={handleSubmit}>
         {step === 1 ? (
           <>
-            <InputGroup 
-              icon={<FaUserAstronaut />} 
-              type="email" 
-              name="email" 
-              placeholder="Email" 
-              onChange={handleChange} 
-              required 
+            <InputGroup
+              icon={<FaUserAstronaut />}
+              type="email"
+              name="email"
+              placeholder="Email"
+              onChange={handleChange}
+              required
             />
-            <InputGroup 
-              icon={<FaKey />} 
-              type="password" 
-              name="password" 
-              placeholder="Passcode" 
-              onChange={handleChange} 
-              required 
+            <InputGroup
+              icon={<FaKey />}
+              type="password"
+              name="password"
+              placeholder="Passcode"
+              onChange={handleChange}
+              required
             />
-            
-            {/* Persistence Option */}
-            <Checkbox 
-              label="Remember terminal (Extend Session)" 
-              name="rememberMe" 
-              checked={formData.rememberMe} 
-              onChange={handleChange} 
+
+            {/* Persistence Option (JWT in LocalStorage vs SessionStorage) */}
+            <Checkbox
+              label="Stay Persistent (JWT)"
+              name="rememberMe"
+              checked={formData.rememberMe}
+              onChange={handleChange}
             />
           </>
         ) : (
-          <InputGroup 
-            icon={<FaShieldAlt />} 
-            type="text" 
-            name="code" 
-            placeholder="6-Digit Token" 
-            onChange={handleChange} 
-            maxLength={6} 
-            highlight 
-            autoFocus 
+          <InputGroup
+            icon={<FaShieldAlt />}
+            type="text"
+            name="code"
+            placeholder="6-Digit Token"
+            onChange={handleChange}
+            maxLength={6}
+            highlight
+            autoFocus
           />
         )}
 
@@ -190,11 +191,11 @@ const Level1 = ({ user, setUser }) => {
           <Button type="submit" disabled={isLoading} fullWidth>
             {isLoading ? 'PROCESSING...' : (step === 1 ? 'INITIATE' : 'VERIFY')}
           </Button>
-          <Button 
-            type="button" 
-            variant="secondary" 
-            onClick={() => navigate('/')} 
-            fullWidth 
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate('/')}
+            fullWidth
           >
             <FaArrowLeft /> RETURN TO BASE
           </Button>
@@ -204,4 +205,4 @@ const Level1 = ({ user, setUser }) => {
   );
 };
 
-export default Level1;
+export default Level2;
