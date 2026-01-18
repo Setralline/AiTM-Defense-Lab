@@ -2,12 +2,17 @@ const bcrypt = require('bcryptjs');
 const pool = require('./db');
 
 /**
- * Database Initialization Script
- * Automatically creates necessary tables and provisions the initial admin account.
+ * ------------------------------------------------------------------
+ * CYBER LAB - DATABASE INITIALIZATION SCRIPT (2026)
+ * ------------------------------------------------------------------
+ * وظيفة الملف: 
+ * 1. مسح الجداول القديمة (Clean Slate Protocol).
+ * 2. بناء هيكلية الجداول المتوافقة مع معايير FIDO2 Level 5.
+ * 3. إنشاء حساب المسؤول الأول (Initial Admin Provisioning).
  */
 const createInitialAdmin = async () => {
   try {
-    // --- CYBER LAB BRANDING SIGNATURE ---
+    // --- شعار المختبر (Cyber Lab Branding) ---
     console.log('\x1b[35m%s\x1b[0m', `
     ██████╗██╗   ██╗██████╗ ███████╗██████╗ 
    ██╔════╝╚██╗ ██╔╝██╔══██╗██╔════╝██╔══██╗
@@ -17,14 +22,14 @@ const createInitialAdmin = async () => {
     ╚═════╝   ╚═╝   ╚═════╝ ╚══════╝╚═╝  ╚═╝
     `);
     
-    console.log('\x1b[36m%s\x1b[0m', ' > CYBER LAB | BUILD BY: OSAMAH AMER');
-    console.log('\x1b[36m%s\x1b[0m', ' > ARCHITECTURE: HYBRID (LEGACY + FIDO2)');
-    console.log('\x1b[36m%s\x1b[0m', ' > YEAR: 2026\n');
+    console.log('\x1b[36m%s\x1b[0m', ' > CYBER LAB | CORE INITIALIZATION SEQUENCE');
+    console.log('\x1b[36m%s\x1b[0m', ' > SECURITY LEVEL: 5 (FIDO2 + BIOMETRIC)');
+    console.log('\x1b[36m%s\x1b[0m', ' > AUTHOR: OSAMAH AMER | YEAR: 2026\n');
 
     // ==========================================================
-    // 0. RESET PROTOCOL (DROP ALL EXISTING TABLES)
+    // 0. بروتوكول التصفير (Reset Protocol)
     // ==========================================================
-    console.log('\x1b[33m%s\x1b[0m', ' [!] SYSTEM: Wiping old database schema...');
+    console.log('\x1b[33m%s\x1b[0m', ' [!] WARNING: Wiping existing laboratory data...');
     
     const dropTablesQuery = `
       DROP TABLE IF EXISTS authenticators CASCADE;
@@ -33,53 +38,52 @@ const createInitialAdmin = async () => {
     `;
     await pool.query(dropTablesQuery);
     
-    console.log('\x1b[32m%s\x1b[0m', ' [+] SYSTEM: Clean slate confirmed.');
+    console.log('\x1b[32m%s\x1b[0m', ' [+] SYSTEM: Database wiped. Clean slate confirmed.');
 
     // ==========================================================
-    // 1. SCHEMA GENERATION (CREATE TABLES)
+    // 1. بناء الهيكلية (Schema Generation)
     // ==========================================================
     const createTablesQuery = `
-      -- Users Table for Operatives and Admins
+      -- جدول المستخدمين (المشغلين والمسؤولين)
       CREATE TABLE users (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         is_admin BOOLEAN DEFAULT FALSE,
-        mfa_secret TEXT,
-        current_challenge TEXT,  -- Stores FIDO2 login challenge temporarily
-        has_fido BOOLEAN DEFAULT FALSE, -- ✅ [ADDED] This fixes the "column does not exist" error
+        current_challenge TEXT,         -- تخزين تحدي FIDO2 المؤقت
+        has_fido BOOLEAN DEFAULT FALSE, -- مؤشر تفعيل حماية مفتاح الأمان
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Blacklist Table to invalidate stolen session cookies
+      -- جدول الموثقين (FIDO2 Authenticators)
+      -- ملاحظة: تم جعل credential_id هو المفتاح الأساسي لضمان التفرد
+      CREATE TABLE authenticators (
+        credential_id TEXT PRIMARY KEY,
+        credential_public_key TEXT NOT NULL, -- المفتاح العام المخزن (Base64URL)
+        counter BIGINT DEFAULT 0,           -- عداد التواقيع للحماية من الاستنساخ
+        transports TEXT,                    -- وسائط الاتصال (usb, nfc, ble, internal)
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- جدول القائمة السوداء للتوكنات (JWT Blacklist)
       CREATE TABLE token_blacklist (
         id SERIAL PRIMARY KEY,
         token TEXT NOT NULL,
         expires_at TIMESTAMP NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-
-      -- FIDO2 Authenticators Table
-      CREATE TABLE authenticators (
-        id SERIAL PRIMARY KEY,
-        credential_id TEXT UNIQUE NOT NULL,       -- The Key ID (Base64URL)
-        credential_public_key TEXT NOT NULL,      -- The Public Key (Base64URL)
-        counter BIGINT DEFAULT 0,                 -- Replay protection counter
-        transports TEXT,                          -- USB, NFC, BLE
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
     `;
 
     await pool.query(createTablesQuery);
-    console.log('\x1b[32m%s\x1b[0m', ' [+] SYSTEM: Database schema verified/created.');
+    console.log('\x1b[32m%s\x1b[0m', ' [+] SYSTEM: Cyber Lab schema successfully deployed.');
 
     // ==========================================================
-    // 2. PROVISIONING (SEED ADMIN)
+    // 2. إنشاء حساب المسؤول الأول (Admin Provisioning)
     // ==========================================================
     const adminEmail = 'admin@lab.com';
-    const adminPass = 'lab123';
+    const adminPass = 'lab123'; // يرجى تغييره بعد الدخول الأول
     const hashedPassword = await bcrypt.hash(adminPass, 10);
 
     const seedAdminQuery = `
@@ -87,14 +91,15 @@ const createInitialAdmin = async () => {
       VALUES ($1, $2, $3, $4);
     `;
 
-    await pool.query(seedAdminQuery, ['Admin Lab', adminEmail, hashedPassword, true]);
+    await pool.query(seedAdminQuery, ['Cyber Lab Admin', adminEmail, hashedPassword, true]);
     
-    console.log('\x1b[32m%s\x1b[0m', ' [+] SYSTEM: Admin checkpoint verified.');
-    console.log('\x1b[33m%s\x1b[0m', ` [+] ACCESS: ${adminEmail} / ${adminPass}`);
+    console.log('\x1b[32m%s\x1b[0m', ' [+] SYSTEM: Admin credentials provisioned.');
+    console.log('\x1b[33m%s\x1b[0m', ` [+] ACCESS GRANTED: ${adminEmail} / ${adminPass}`);
     console.log('\x1b[0m', '-------------------------------------------------');
 
   } catch (err) {
-    console.error('\x1b[31m%s\x1b[0m', ' [!] ERROR: Seed execution failed:', err.message);
+    console.error('\x1b[31m%s\x1b[0m', ' [!] CRITICAL ERROR: Initialization failed:', err.message);
+    process.exit(1); // إنهاء العملية في حال فشل التهيئة
   }
 };
 
