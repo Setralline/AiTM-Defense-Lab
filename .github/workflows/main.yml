@@ -2,7 +2,7 @@ name: Phishing Lab Security Checks
 
 on:
   push:
-    branches: [ main, fix/docker-production ]
+    branches: [ main, dev ]
   pull_request:
     branches: [ main ]
 
@@ -17,7 +17,6 @@ jobs:
       run:
         working-directory: ./backend
     
-    # Isolated PostgreSQL service for testing
     services:
       postgres:
         image: postgres:14
@@ -53,7 +52,6 @@ jobs:
         DB_NAME: phishing_lab_db_test
         DB_HOST: localhost
         DB_PORT: 5432
-        # Also passing the full URL for modern library support
         DATABASE_URL: postgres://postgres:test_password@localhost:5432/phishing_lab_db_test
         JWT_SECRET: test_secret_key_123
         NODE_ENV: test
