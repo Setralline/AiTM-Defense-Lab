@@ -2,69 +2,126 @@ const bcrypt = require('bcryptjs');
 const pool = require('./db');
 
 /**
- * Database Initialization Script
- * Automatically creates necessary tables and provisions the initial admin account.
+ * ------------------------------------------------------------------
+ * CYBER LAB - DATABASE INITIALIZATION SCRIPT (2026)
+ * ------------------------------------------------------------------
  */
 const createInitialAdmin = async () => {
   try {
-    // --- OSAMAH AMER SIGNATURE (TERMINAL) ---
+    // Red Teaming Style Logo (Crimson Red)
     console.log('\x1b[31m%s\x1b[0m', `
-    ██████╗ ███████╗ █████╗ ███╗   ███╗ █████╗ ██╗  ██╗
-    ██╔══██╗██╔════╝██╔══██╗████╗ ████║██╔══██╗██║  ██║
-    ██║  ██║███████╗███████║██╔████╔██║███████║███████║
-    ██║  ██║╚════██║██╔══██║██║╚██╔╝██║██╔══██║██╔══██║
-    ██████╔╝███████║██║  ██║██║ ╚═╝ ██║██║  ██║██║  ██║
-    ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝
+                                               %###%%                                               
+                                          %%############%%                                          
+                                      %######################%                                      
+                                 %##############%%%%#############%%                                 
+                            %##############%%          %%##########%%#%%                            
+                       %###############%                    %%#%%#####%%%%#%%                       
+                  %%##############%                              %%%%%#%%%%%%%%%%%                  
+              %##############%                                        %#%%%%%%%%%%%%%%              
+         %##############%%                                                %%%%%%%%%%%%%%%%%         
+      %#############%                                                          %%%%%%%%%%%%%%%      
+      %########%                                                                    %%%%%%%%%%      
+      %######%                                                                        %%%%%%%%      
+      %######%                                                                        %%%%%%%%      
+      %######%                                                                        %%%%%%%%      
+      %######%                                                                        %%%%%%%%      
+      %######%                                                                        %%%%%%%%      
+      %######%                                                                        %%%%%%%%      
+      %######%                                            ====                        %%%%%%%%      
+      %######%                                           ======                       %%%%%%%%      
+      %######%                                           ======                       %%%%%%%%      
+      %######%                                           ======                       %%%%%%%%      
+      %######%                %###############################%%%%%%%%                %%%%%%%%      
+      %######%               ##############################%#%%%%%%%%%%               %%%%%%%%      
+      %######%              #############################%%%%%%%%%%%%%%%              %%%%%%%%      
+      %######%              %##########################%%%%%%%%%%%%%%%%%              %%%%%%%%      
+      %######%              %#######################%%%%%%%%%%%%%%%%%%%%              %%%%%%%%      
+      %######%              %#################%@@@@@@%%%%%%%%%%%%%%%%%%%              %%%%%%%%      
+      %######%              %###############%@@@@@@@@@@%%%%%%%%%%%%%%%%%              %%%%%%%%      
+      %######%              %###############@@@@@@@@@@@@%%%%%%%%%%%%%%%%              %%%%%%%%      
+      %######%              %#############%%@@@@@@@@@@@@%%%%%%%%%%%%%%%%              %%%%%%%%      
+      %######%              %############%%%%@@@@@@@@@@%%%%%%%%%%%%%%%%%              %%%%%%%%      
+      %######%              %#########%%%%%%%%@@@@@@@@%%%%%%%%%%%%%%%%%%              %%%%%%%%      
+      %######%              %######%%%%%%%%%%%%%@@@@%%%%%%%%%%%%%%%%%%%%              %%%%%%%%      
+      %######%              %####%%%%%%%%%%%%%%%@@@@%%%%%%%%%%%%%%%%%%%%              %%%%%%%%      
+      %######%              %##%%%%%%%%%%%%%%%%%@@@@%%%%%%%%%%%%%%%%%%%%              %%%%%%%%      
+      %######%              %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%@@              %%%%%%%%      
+      %######%               %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%@@@               %%%%%%%%      
+      %######%%%%              %%%%%%%###%%%%%%%%%%%%%%%%%%%%%%%%@@%@              %%%%%%%%%%%      
+       %#%#%#%#%%%#%%                ======                                    %%%%%%%%%%%%%%       
+          %%%%%%%%%%%%%%             ======                                 %%%%%%%%%%%%%%          
+              %%%%%%%%%%%%%%         ======                             %%%%%%%%%%%%%@              
+                  %%%%%%%%%%%%%                                      %%%%%%%%%%%%%                  
+                     %%%%%%%%%%%%%%                              %%%%%%%%%%%%%@                     
+                         %%%%%%%%%%%%%%                      %%%%%%%%%%%%%%                         
+                            %%%%%%%%%%%%%%                %%%%%%%%%%%%%@                            
+            ::::::  :::: :::: ::::::-%%+::::::: :::::::=%%%%%%+:-%%%    :::::   ::::::::            
+           :::  :::  ::::::   :::  ::=%+:-%%%%%%-::%%*:-%%%%%%=::       :::::   :::  :::            
+          :::         ::::    :::::::  ::::::-%%+::::::*%%%%% :::      ::: :::  ::::::::            
+          ::::  :::    :::    :::  ::: ::: %%%%%+:-%=::%%     :::      :::::::  :::   :::           
+            ::::::     :::    :::::::: ::::::::%=:-%%::::     ::::::: :::   ::: ::::::::            
     `);
-    
-    console.log('\x1b[36m%s\x1b[0m', ' > MODERN PHISHING LAB LOADED');
-    console.log('\x1b[36m%s\x1b[0m', ' > AUTHOR: OSAMAH AMER');
-    console.log('\x1b[36m%s\x1b[0m', ' > YEAR: 2026\n');
 
-    // 1. Create Tables if they do not exist
+    // Credits & Status
+    console.log('\x1b[31m%s\x1b[0m', '   >>> DEVELOPED BY: Osamah Amer (2026) <<<');
+    console.log('\x1b[37m%s\x1b[0m', '   >>> SYSTEM STATUS: INITIALIZING CORE MODULES...\n');
+
+    // Drop tables to ensure clean slate
+    const dropTablesQuery = `
+      DROP TABLE IF EXISTS authenticators CASCADE;
+      DROP TABLE IF EXISTS token_blacklist CASCADE;
+      DROP TABLE IF EXISTS users CASCADE;
+    `;
+    await pool.query(dropTablesQuery);
+
     const createTablesQuery = `
-      -- Users Table for Operatives and Admins
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE users (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         is_admin BOOLEAN DEFAULT FALSE,
-        mfa_secret TEXT,
+        mfa_secret TEXT,                
+        current_challenge TEXT,         
+        has_fido BOOLEAN DEFAULT FALSE, 
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Blacklist Table to invalidate stolen session cookies
-      CREATE TABLE IF NOT EXISTS token_blacklist (
+      CREATE TABLE authenticators (
+        credential_id TEXT PRIMARY KEY,
+        credential_public_key TEXT NOT NULL, 
+        counter BIGINT DEFAULT 0,
+        transports TEXT,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- FIX: Added UNIQUE constraint to 'token' for ON CONFLICT support
+      CREATE TABLE token_blacklist (
         id SERIAL PRIMARY KEY,
-        token TEXT NOT NULL,
+        token TEXT UNIQUE NOT NULL, 
         expires_at TIMESTAMP NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
 
     await pool.query(createTablesQuery);
-    console.log('\x1b[32m%s\x1b[0m', ' [+] SYSTEM: Database schema verified/created.');
 
-    // 2. Provision Initial Admin Account
+    // Create Admin User
     const adminEmail = 'admin@lab.com';
     const adminPass = 'lab123';
     const hashedPassword = await bcrypt.hash(adminPass, 10);
 
-    const seedAdminQuery = `
-      INSERT INTO users (name, email, password, is_admin)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (email) DO NOTHING;
-    `;
+    await pool.query(
+      "INSERT INTO users (name, email, password, is_admin) VALUES ($1, $2, $3, $4)",
+      ['Cyber Lab Admin', adminEmail, hashedPassword, true]
+    );
 
-    await pool.query(seedAdminQuery, ['Admin Lab', adminEmail, hashedPassword, true]);
-    
-    console.log('\x1b[32m%s\x1b[0m', ' [+] SYSTEM: Admin checkpoint verified.');
+    console.log('\x1b[32m%s\x1b[0m', ' [+] SYSTEM: Database schema verified for ALL Labs.');
     console.log('\x1b[33m%s\x1b[0m', ` [+] ACCESS: ${adminEmail} / ${adminPass}`);
-    console.log('\x1b[0m', '-------------------------------------------------');
 
   } catch (err) {
-    console.error('\x1b[31m%s\x1b[0m', ' [!] ERROR: Seed execution failed:', err.message);
+    console.error('\x1b[31m%s\x1b[0m', ' [!] CRITICAL ERROR:', err.message);
   }
 };
 

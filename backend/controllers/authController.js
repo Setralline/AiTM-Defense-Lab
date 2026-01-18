@@ -1,150 +1,156 @@
+const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const pool = require('../config/db');
+const config = require('../config/env');
+const { generateToken, authenticateUser } = require('../utils/helpers');
 
 /**
- * Admin Login: Database Driven
- * Authenticates users who have the 'is_admin' flag set to true in PostgreSQL.
+ * ------------------------------------------------------------------
+ * AUTH CONTROLLER (Refactored & Secure)
+ * ------------------------------------------------------------------
+ * Handles Administrative login, Session validation, and User Management.
+ * Uses centralized helpers for consistent security logic.
+ */
+
+/**
+ * ADMIN LOGIN
+ * Authenticates an admin and issues a session token.
  */
 exports.adminLogin = async (req, res) => {
   const { email, password } = req.body;
 
+  // 1. Input Validation
   if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required' });
+    return res.status(400).json({ message: 'Credentials required' });
   }
 
   try {
-    // Look for the user and verify they have administrative privileges
-    const result = await pool.query(
-      'SELECT * FROM users WHERE email = $1 AND is_admin = TRUE', 
-      [email.toLowerCase().trim()]
-    );
-    
-    const admin = result.rows[0];
+    // 2. Centralized Authentication (Checks User existence & Password hash)
+    const user = await authenticateUser(email, password);
 
-    if (!admin) {
-      return res.status(401).json({ success: false, message: 'Access denied: Admin privileges required' });
+    // 3. Authorization Check (RBAC: Admin Only)
+    if (!user.is_admin) {
+      console.warn(`[Security] Unauthorized Admin Access Attempt: ${email}`);
+      return res.status(403).json({ message: 'Access Denied: Insufficient Privileges' });
     }
 
-    // Verify password against stored hash
-    const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid administrative credentials' });
-    }
+    // 4. Generate Standardized Token
+    const token = generateToken(user);
 
-    // For lab simplicity, we return success. In production, issue a specific JWT here.
-    res.json({ 
-      success: true, 
-      message: 'Administrative session initialized',
-      user: { id: admin.id, name: admin.name, email: admin.email }
+    // 5. Return Success Response
+    res.json({
+      success: true,
+      token,
+      user: { id: user.id, name: user.name, email: user.email }
     });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error during administrative login' });
+    // Handle "Invalid credentials" explicitly to avoid generic 500 errors
+    if (err.message === 'Invalid credentials') {
+      return res.status(401).json({ message: err.message });
+    }
+    console.error('Admin Login Error:', err);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
 /**
- * Validates any operative session (Level 1 or Level 2)
+ * GET CURRENT USER
+ * Validates the incoming session token and returns the user profile.
+ * Used by the frontend to restore session state on reload.
  */
 exports.getCurrentUser = async (req, res) => {
   try {
-    let token;
-
-    if (req.headers.authorization?.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    } 
-    else if (req.cookies?.session_id) {
-      token = req.cookies.session_id;
-    }
+    // 1. Extract Token (Support Header 'Bearer' or Cookie)
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1] || req.cookies?.session_id;
 
     if (!token) {
-      return res.status(401).json({ message: 'Authentication required' });
+      return res.status(401).json({ message: 'No session token found' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // 2. Verify Token Signature
+    const decoded = jwt.verify(token, config.security.jwtSecret);
+    const userId = decoded.id || decoded.userId; // Support legacy & new payloads
 
-    const result = await pool.query(
-      'SELECT id, name, email, mfa_secret, is_admin FROM users WHERE id = $1', 
-      [decoded.id]
-    );
-    
-    const user = result.rows[0];
-
+    // 3. Fetch User from DB
+    const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: 'Account no longer exists' });
+      return res.status(404).json({ message: 'User account no longer exists' });
     }
+
+    // 4. Sanitize Response (Remove sensitive secrets)
+    delete user.password;
+    delete user.current_challenge;
 
     res.json({ success: true, user });
 
   } catch (err) {
-    res.status(401).json({ message: 'Session has expired or is invalid' });
+    // JWT verification failed (expired or invalid signature)
+    res.status(401).json({ message: 'Session expired or invalid' });
   }
 };
 
+// =========================================================================
+// USER MANAGEMENT (CRUD)
+// =========================================================================
+
 /**
- * Admin: Retrieve all registered operatives
+ * LIST ALL USERS
+ * Admin-only endpoint to view registered users.
  */
 exports.listUsers = async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT id, name, email, mfa_secret, is_admin FROM users ORDER BY id DESC'
-    );
-    res.json({ success: true, users: result.rows });
+    // Note: Direct pool access is acceptable for simple reads, 
+    // but moving this to User.findAll() in the model is also a good practice.
+    const pool = require('../config/db');
+    const result = await pool.query('SELECT id, name, email, has_fido, is_admin FROM users ORDER BY id DESC');
+    res.json({ users: result.rows });
   } catch (err) {
-    res.status(500).json({ message: 'System error: Unable to fetch operative list' });
+    console.error('List Users Error:', err);
+    res.status(500).json({ message: 'Failed to retrieve users' });
   }
 };
 
 /**
- * Admin: Provision a new account (Operative or Admin)
- * Now supports the 'isAdmin' flag to grant privileges via code.
+ * CREATE NEW USER
+ * Admin endpoint to provision new accounts manually.
  */
 exports.createUser = async (req, res) => {
-  const { name, email, password, isAdmin } = req.body;
-
-  if (!name || !email || !password) {
-    return res.status(400).json({ message: 'Provisioning failed: Missing fields' });
-  }
-
   try {
+    const { name, email, password, isAdmin } = req.body;
+
+    // 1. Hash the password before storage
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const result = await pool.query(
-      'INSERT INTO users (name, email, password, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, name, email, is_admin',
-      [name, email.toLowerCase().trim(), hashedPassword, isAdmin || false]
-    );
-
-    res.status(201).json({ 
-      success: true, 
-      message: isAdmin ? 'Administrator created' : 'Operative created',
-      user: result.rows[0] 
+    // 2. Create via Model
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      isAdmin: isAdmin || false
     });
+
+    res.status(201).json({ success: true, user });
+
   } catch (err) {
-    if (err.code === '23505') {
-      return res.status(400).json({ message: 'Conflict: Email already registered' });
-    }
-    res.status(500).json({ message: 'Database failure during account creation' });
+    console.error('Create User Error:', err);
+    res.status(500).json({ message: 'Failed to create user' });
   }
 };
 
 /**
- * Admin: Permanent removal of a user account
+ * DELETE USER
+ * Admin endpoint to remove accounts.
  */
 exports.deleteUser = async (req, res) => {
-  const { id } = req.params;
-
   try {
-    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
-    
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: 'Target not found' });
-    }
-
-    res.json({ success: true, message: 'Access terminated and account purged' });
+    const { id } = req.params;
+    await User.delete(id);
+    res.json({ success: true, message: 'User deleted successfully' });
   } catch (err) {
-    res.status(500).json({ message: 'System error: Termination failed' });
+    console.error('Delete User Error:', err);
+    res.status(500).json({ message: 'Failed to delete user' });
   }
 };

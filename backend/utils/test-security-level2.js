@@ -1,12 +1,18 @@
 const axios = require('axios');
 
 /**
- * Security Verification Script: Level 2 JWT Replay Attack Mitigation
- * Purpose: To prove that stolen JWTs are invalidated server-side after logout.
- * Author: Osamah Amer (Thesis Lab 2026)
+ * ------------------------------------------------------------------
+ * SECURITY VERIFICATION SCRIPT: LEVEL 2
+ * ------------------------------------------------------------------
+ * Purpose: Verification of JWT Replay Attack Mitigation.
+ * Logic: Proves that the server correctly rejects a valid-signature JWT 
+ * if it has been previously revoked (blacklisted) via logout.
+ * * Author: Osamah Amer (Thesis Lab 2026)
  */
 
 const BASE_URL = 'http://localhost:5000/auth';
+
+// Test Credentials (Admin)
 const TEST_USER = {
   email: 'admin@lab.com',
   password: 'lab123'
@@ -14,46 +20,66 @@ const TEST_USER = {
 
 async function runLevel2SecurityTest() {
   try {
-    console.log('\n\x1b[36m[STEP 1]\x1b[0m Initializing Level 2 Login...');
-    
-    // 1. Simulate Level 2 Login (JWT is returned in the response body)
+    console.log('\n=======================================================');
+    console.log('🛡️  STARTING LEVEL 2 SECURITY TEST (JWT BLACKLIST)');
+    console.log('=======================================================\n');
+
+    // ---------------------------------------------------------
+    // STEP 1: LOGIN (Simulate Token Issuance/Theft)
+    // ---------------------------------------------------------
+    console.log('\x1b[36m[STEP 1]\x1b[0m Simulating Level 2 Login...');
     const loginRes = await axios.post(`${BASE_URL}/level2`, TEST_USER);
     const jwtToken = loginRes.data.token;
     
     if (!jwtToken) {
-      throw new Error('JWT Token not received. Check Level 2 controller.');
+      throw new Error('Critical: No JWT received from Level 2 login.');
     }
-    console.log('\x1b[32m[+]\x1b[0m JWT Captured: Simulating stolen token from LocalStorage.');
+    console.log('\x1b[32m[SUCCESS]\x1b[0m JWT Captured. Token acquired.');
 
-    // 2. Verify Session is active using Authorization Header
-    console.log('\n\x1b[36m[STEP 2]\x1b[0m Verifying Active JWT Session...');
+    // ---------------------------------------------------------
+    // STEP 2: VERIFY ACTIVE SESSION
+    // ---------------------------------------------------------
+    console.log('\n\x1b[36m[STEP 2]\x1b[0m Verifying token validity before revocation...');
     const config = { headers: { Authorization: `Bearer ${jwtToken}` } };
     
     const meRes = await axios.get(`${BASE_URL}/me`, config);
-    console.log('\x1b[32m[+]\x1b[0m Access Granted: Token is valid for user:', meRes.data.user.email);
+    console.log(`\x1b[32m[SUCCESS]\x1b[0m Access Granted for User: ${meRes.data.user.email}`);
 
-    // 3. Trigger Termination (Logout) - This should blacklist the JWT
-    console.log('\n\x1b[36m[STEP 3]\x1b[0m Triggering Session Termination (Revocation)...');
+    // ---------------------------------------------------------
+    // STEP 3: TERMINATE SESSION (Revocation)
+    // ---------------------------------------------------------
+    console.log('\n\x1b[36m[STEP 3]\x1b[0m Triggering Logout (Adding Token to Blacklist)...');
     await axios.post(`${BASE_URL}/logout`, {}, config);
-    console.log('\x1b[32m[+]\x1b[0m Termination Successful: JWT added to Server-Side Blacklist.');
+    console.log('\x1b[32m[SUCCESS]\x1b[0m Logout executed. Token should now be invalidated.');
 
-    // 4. Attempt Replay Attack (The "Golden" Test)
-    console.log('\n\x1b[36m[STEP 4]\x1b[0m Attempting Replay Attack with Revoked JWT...');
+    // ---------------------------------------------------------
+    // STEP 4: REPLAY ATTACK (The Verification)
+    // ---------------------------------------------------------
+    console.log('\n\x1b[36m[STEP 4]\x1b[0m Executing Replay Attack with Revoked Token...');
     try {
+      // Attempt to access a protected route with the blacklisted token
       await axios.get(`${BASE_URL}/me`, config);
-      console.log('\x1b[31m[!]\x1b[0m FAILURE: Server accepted a blacklisted JWT! Security breach.');
+      
+      // If we reach here, the server FAILED to block the request
+      console.log('\x1b[31m[FAILED]\x1b[0m 🚨 CRITICAL VULNERABILITY: Server accepted a blacklisted token!');
+      process.exit(1);
+
     } catch (err) {
       if (err.response && err.response.status === 401) {
-        console.log('\x1b[32m[SUCCESS]\x1b[0m Attack Blocked! Server returned 401 Unauthorized.');
-        console.log('\x1b[33m[RESULT]\x1b[0m JWT Blacklisting Middleware is functioning correctly.');
+        // 401 Unauthorized is the EXPECTED result
+        console.log('\x1b[32m[PASSED]\x1b[0m ✅ Attack Blocked! Server returned 401 Unauthorized.');
+        console.log('\x1b[33m[INFO]\x1b[0m Middleware "checkBlacklist" is functioning correctly.');
       } else {
-        console.log('\x1b[31m[!]\x1b[0m ERROR: Unexpected response status:', err.response?.status);
+        console.log(`\x1b[31m[ERROR]\x1b[0m Unexpected Status Code: ${err.response?.status}`);
       }
     }
 
+    console.log('\n=======================================================');
+
   } catch (err) {
-    console.error('\x1b[31m[!]\x1b[0m TEST FAILED:', err.message);
+    console.error('\n\x1b[31m[TEST ERROR]\x1b[0m Execution failed:', err.message);
   }
 }
 
+// Execute
 runLevel2SecurityTest();

@@ -1,55 +1,119 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
+const config = require('../config/env');
 const pool = require('../config/db');
+const User = require('../models/User');
 
 /**
- * Generates a JSON Web Token (JWT) for a user.
- * @param {Object} user - The user object from the database.
- * @param {boolean} rememberMe - Determines the expiration time.
- * @returns {string} Signed JWT.
+ * ------------------------------------------------------------------
+ * SECURITY HELPER FUNCTIONS
+ * ------------------------------------------------------------------
+ * Centralizes critical security logic (Auth, Tokens, Revocation).
  */
-const generateToken = (user, rememberMe) => {
-  // Logic: "Remember Me" grants a long-lived token (365 days), otherwise standard session (1 hour)
-  const expiresIn = rememberMe ? '365d' : '1h'; 
-  
+
+/**
+ * GENERATE JWT TOKEN
+ * Creates a standardized JSON Web Token.
+ * @param {Object} user - The user object.
+ * @param {boolean} [isRemembered=false] - If true, extends expiration to 1 year.
+ */
+const generateToken = (user, isRemembered = false) => {
   return jwt.sign(
-    { id: user.id, email: user.email },
-    process.env.JWT_SECRET,
-    { expiresIn }
+    {
+      id: user.id,
+      userId: user.id,
+      email: user.email,
+      isAdmin: user.is_admin
+    },
+    config.security.jwtSecret,
+    { expiresIn: isRemembered ? '1y' : config.security.jwtExpiresIn }
   );
 };
 
 /**
- * Revokes a session token by adding its unique signature to the database blacklist.
- * This is the primary defense mechanism against stolen/intercepted JWTs and Cookies.
- * It transforms stateless authentication into a revocable hybrid system.
- * * @param {string} token - The JWT or Session ID to be invalidated.
- * @returns {Promise<boolean>} - Returns true if successfully blacklisted.
+ * AUTHENTICATE USER HELPER
+ * Verifies email and password hash.
+ */
+const authenticateUser = async (email, password) => {
+  const user = await User.findByEmail(email);
+  if (!user) throw new Error('Invalid credentials');
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) throw new Error('Invalid credentials');
+
+  return user;
+};
+
+/**
+ * REVOKE SESSION HELPER (Organized Logging)
+ * - Invalidates session in DB.
+ * - Creates 'logs' folder if missing.
+ * - Saves full token to 'backend/logs/terminated.txt'.
  */
 const revokeSession = async (token) => {
   if (!token) return false;
-  
+
   try {
-    // We store the revoked token in the 'token_blacklist' table.
-    // The 'expires_at' ensures the database doesn't grow infinitely by only 
-    // keeping the token until its natural expiration window (e.g., 24h).
-    await pool.query(
-      'INSERT INTO token_blacklist (token, expires_at) VALUES ($1, NOW() + INTERVAL \'24 hours\')',
-      [token]
-    );
-    
-    console.log(`[SECURITY] Session identifier successfully added to blacklist.`);
-    return true;
-  } catch (err) {
-    // Unique constraint violation (code 23505) means the token is already blacklisted
-    if (err.code === '23505') {
-      return true; 
+    // 1. Set Default Expiration (24h)
+    let expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const decoded = jwt.decode(token);
+    if (decoded && decoded.exp) {
+      expiresAt = new Date(decoded.exp * 1000);
     }
-    console.error('CRITICAL: Failed to blacklist session token:', err.message);
+
+    // 2. Insert into Database
+    const query = `
+      INSERT INTO token_blacklist (token, expires_at)
+      VALUES ($1, $2)
+      ON CONFLICT (token) DO NOTHING
+    `;
+    await pool.query(query, [token, expiresAt]);
+
+    // 3. LOG TO FILE (Organized in /logs folder)
+    const logsDir = path.join(__dirname, '../logs');
+
+    // Ensure 'logs' directory exists
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+
+    const timestamp = new Date().toISOString();
+
+    // MODIFIED: Log the FULL token (No truncation) for POC demonstration
+    const logMessage = `[${timestamp}] SESSION TERMINATED | Token: ${token} | Expires: ${expiresAt.toISOString()}\n`;
+
+    // Path: backend/logs/terminated.txt
+    const logFilePath = path.join(logsDir, 'terminated.txt');
+
+    fs.appendFile(logFilePath, logMessage, (err) => {
+      if (err) console.error('[Logger] Failed to write to logs/terminated.txt:', err);
+    });
+
+    console.log(`[Security] 🚫 Session Terminated. Logged to /logs/terminated.txt`);
+    return true;
+
+  } catch (err) {
+    console.error('[Helper] Revocation Error:', err.message);
+    // Return false but don't crash, allowing the client to continue logout flow
     return false;
   }
 };
 
-module.exports = { 
-  generateToken,
-  revokeSession 
+/**
+ * CHECK BLACKLIST HELPER
+ * Used by middleware to block revoked tokens.
+ */
+const isBlacklisted = async (token) => {
+  if (!token) return false;
+  try {
+    const result = await pool.query('SELECT 1 FROM token_blacklist WHERE token = $1', [token]);
+    return result.rowCount > 0;
+  } catch (err) {
+    console.error('[Helper] Blacklist Check Error:', err.message);
+    return false;
+  }
 };
+
+module.exports = { generateToken, authenticateUser, revokeSession, isBlacklisted };

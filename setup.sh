@@ -1,157 +1,126 @@
 #!/bin/bash
 
 # ============================================================
-# Full Stack Auto-Setup Script
-# Covers: System Updates, Docker Installation, SSL, Deployment
+# Phishing Defense Lab - Multi-OS Setup Script (2026)
+# Supports: Windows (Git Bash), Linux (Ubuntu/Debian)
 # ============================================================
 
-# Text Formatting
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# ------------------------------------------------------------
-# 0. User Configuration (General)
-# ------------------------------------------------------------
-echo "------------------------------------------------------------"
-echo "Initializing Setup..."
-echo "------------------------------------------------------------"
-
-# Ask for Domain Name
-read -p "Enter your domain name (e.g., example.com): " DOMAIN
-
-if [ -z "$DOMAIN" ]; then
-    echo -e "${RED}[Error] Domain name is required. Exiting.${NC}"
-    exit 1
+OS_TYPE="linux"
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    OS_TYPE="windows"
 fi
 
-EMAIL="admin@$DOMAIN"
-echo -e "${GREEN}[Info] Setup configuration loaded for: $DOMAIN${NC}"
+SUDO_CMD="sudo"
+if [[ "$OS_TYPE" == "windows" ]]; then
+    SUDO_CMD=""
+fi
 
-# ------------------------------------------------------------
-# 1. System Update & Docker Installation (From Scratch)
-# ------------------------------------------------------------
-echo -e "${YELLOW}[Step 1/5] Updating system & Installing Docker...${NC}"
+echo -e "${GREEN}------------------------------------------------------------${NC}"
+echo -e "${GREEN}   🚀 PHISHING DEFENSE LAB - AUTO INITIALIZER ($OS_TYPE)${NC}"
+echo -e "${GREEN}------------------------------------------------------------${NC}"
 
-# Update package list and upgrade system
-sudo apt-get update -qq
-sudo apt-get upgrade -y -qq
+# 1. Select Environment Mode
+echo -e "${YELLOW}[Step 1] Select Environment Mode:${NC}"
+echo "1) Local Development (localhost)"
+echo "2) Production (AWS/VPS with SSL)"
+read -p "Selection [1-2]: " MODE_CHOICE
 
-# Install essential tools and dependencies
-sudo apt-get install -y \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    gnupg \
-    lsb-release \
-    git \
-    certbot
-
-# Install Docker and Docker Compose
-if ! command -v docker &> /dev/null; then
-    echo "Installing Docker..."
-    sudo apt-get install -y docker.io
+if [[ "$MODE_CHOICE" == "2" ]]; then
+    ENV_MODE="production"
+    read -p "Enter your domain name: " DOMAIN
+    if [ -z "$DOMAIN" ]; then echo -e "${RED}Domain required!${NC}"; exit 1; fi
+    PROTOCOL="https"
 else
-    echo "Docker is already installed."
+    ENV_MODE="local"
+    DOMAIN="localhost"
+    PROTOCOL="http"
 fi
 
-if ! command -v docker-compose &> /dev/null; then
-    echo "Installing Docker Compose..."
-    sudo apt-get install -y docker-compose
+# 2. Install Dependencies (Linux Only)
+if [[ "$OS_TYPE" == "linux" ]]; then
+    echo -e "${YELLOW}[Step 2] Installing Linux Dependencies...${NC}"
+    $SUDO_CMD apt-get update -qq
+    $SUDO_CMD apt-get install -y curl git certbot docker.io docker-compose -qq
 else
-    echo "Docker Compose is already installed."
+    echo -e "${YELLOW}[Step 2] Windows Detected: Skipping apt-get (Ensure Docker Desktop is running)${NC}"
 fi
 
-# Enable and Start Docker Service
-echo "Starting Docker Service..."
-sudo systemctl enable docker
-sudo systemctl start docker
+# 3. Generate .env File
+echo -e "${YELLOW}[Step 3] Generating .env File...${NC}"
+DB_PASS="lab_secure_$(date +%s)"
+JWT_SECRET="secret_$(date +%s)"
 
-# ------------------------------------------------------------
-# 2. SSL Certificate Management
-# ------------------------------------------------------------
-echo -e "${YELLOW}[Step 2/5] Checking SSL certificates...${NC}"
-CERT_PATH="/etc/letsencrypt/live/$DOMAIN"
+cat <<EOF > .env
+DB_USER=postgres
+DB_PASSWORD=$DB_PASS
+DB_NAME=phishing_lab_db
+DB_PORT=5432
+DB_HOST=db
+JWT_SECRET=$JWT_SECRET
+NODE_ENV=$ENV_MODE
+DOMAIN=$DOMAIN
+CORS_ORIGIN=$PROTOCOL://$DOMAIN
+EOF
 
-if [ ! -d "$CERT_PATH" ]; then
-    echo "[Info] No SSL certificate found. Generating..."
-    
-    # Stop services to free port 80 for the challenge
-    sudo systemctl stop nginx 2>/dev/null || true
-    sudo docker stop $(sudo docker ps -aq) 2>/dev/null || true
-
-    # Request Certificate
-    sudo certbot certonly --standalone \
-        --preferred-challenges http \
-        -d "$DOMAIN" \
-        --non-interactive \
-        --agree-tos \
-        -m "$EMAIL"
-
-    if [ ! -d "$CERT_PATH" ]; then
-        echo -e "${RED}[Error] SSL Generation failed. Check your DNS A Record.${NC}"
-        exit 1
-    fi
-    echo -e "${GREEN}[Success] SSL Certificate secured.${NC}"
-else
-    echo -e "${GREEN}[Info] Valid SSL Certificate found. Skipping.${NC}"
-fi
-
-# ------------------------------------------------------------
-# 3. Dynamic Nginx Configuration
-# ------------------------------------------------------------
-echo -e "${YELLOW}[Step 3/5] configuring Nginx...${NC}"
+# 4. Configure Nginx
 mkdir -p client
-
-# Create nginx.conf dynamically with user's domain
-cat <<EOF > client/nginx.conf
+if [[ "$ENV_MODE" == "production" ]]; then
+    echo -e "${YELLOW}[Step 4] Configuring Production Nginx (SSL)...${NC}"
+    # SSL Generation only on Linux
+    if [[ "$OS_TYPE" == "linux" ]]; then
+        $SUDO_CMD certbot certonly --standalone -d "$DOMAIN" --non-interactive --agree-tos -m "admin@$DOMAIN"
+    fi
+    cat <<EOF > client/nginx.conf
 server {
     listen 80;
     server_name $DOMAIN;
     return 301 https://\$host\$request_uri;
 }
-
 server {
     listen 443 ssl;
     server_name $DOMAIN;
-
     ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
-
     location / {
         root /usr/share/nginx/html;
         index index.html index.htm;
         try_files \$uri \$uri/ /index.html;
     }
-
-    location /auth {
+    location /auth/ {
         proxy_pass http://backend:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host \$host;
-        proxy_cache_bypass \$http_upgrade;
     }
 }
 EOF
+else
+    echo -e "${YELLOW}[Step 4] Configuring Local Nginx...${NC}"
+    cat <<EOF > client/nginx.conf
+server {
+    listen 80;
+    location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+        try_files \$uri \$uri/ /index.html;
+    }
+    location /auth/ {
+        proxy_pass http://backend:5000;
+        proxy_set_header Host \$host;
+    }
+}
+EOF
+fi
 
-# ------------------------------------------------------------
-# 4. Cleanup (Prevent Conflicts)
-# ------------------------------------------------------------
-echo -e "${YELLOW}[Step 4/5] Cleaning environment...${NC}"
-sudo docker rm -f $(sudo docker ps -aq) 2>/dev/null || true
-sudo docker network prune -f 2>/dev/null || true
+# 5. Launch Docker
+echo -e "${YELLOW}[Step 5] Launching Containers...${NC}"
+$SUDO_CMD docker-compose down -v 2>/dev/null
+$SUDO_CMD docker-compose up --build -d
 
-# ------------------------------------------------------------
-# 5. Build & Launch
-# ------------------------------------------------------------
-echo -e "${YELLOW}[Step 5/5] Building and Launching containers...${NC}"
-
-# Pass domain to backend and start
-CORS_ORIGIN=https://$DOMAIN sudo docker-compose up --build -d
-
-echo "------------------------------------------------------------"
-echo -e "${GREEN}[Done] Installation & Deployment Successful!${NC}"
-echo -e "Access URL: https://$DOMAIN"
-echo "------------------------------------------------------------"
+echo -e "${GREEN}------------------------------------------------------------${NC}"
+echo -e "${GREEN}[DONE] LAB IS READY!${NC}"
+echo -e "URL: $PROTOCOL://$DOMAIN"
+echo -e "${GREEN}------------------------------------------------------------${NC}"

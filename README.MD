@@ -1,136 +1,103 @@
-# Phishing Defense Lab (AiTM Simulation)
-
 <div align="center">
-<img src="./client/src/assets/logo.svg" alt="App Icon" width="120" />
+  <img src="./client/src/assets/logo.svg" alt="App Icon" width="120" />
 </div>
 
-**Master's Thesis Project by Osamah Amer (2026)**
+# Phishing Defense Lab (AiTM Research Platform)
 
-Welcome to the central repository for the Phishing Defense Lab. This project is a controlled environment designed to simulate and analyze modern **Adversary-in-the-Middle (AiTM)** attacks, specifically focusing on how reverse proxies like Evilginx2 interact with different authentication levels.
+**Master's Thesis Project | Osamah Amer (2026)** *Adversary-in-the-Middle (AiTM) Attack Analysis & Defense*
 
----
+The **Phishing Defense Lab** is a professional full-stack simulation environment designed to analyze the mechanics of modern phishing attacks—specifically Reverse Proxy (AiTM) attacks like *Evilginx2*—and evaluate the efficacy of various defense mechanisms. 
 
-## Deployment via Docker
-
-This project is fully containerized to ensure consistency across development and production environments. Using **Docker Compose**, you can spin up the Frontend (React/Nginx), Backend (Node.js), and Database (PostgreSQL) with a single command.
-
-### Prerequisites
-* [Docker Desktop](https://www.docker.com/products/docker-desktop) installed (for local run).
-* **AWS EC2** instance (for production).
-
-### 1. Run Locally (Development & Testing)
-This will build the images and start the services on a unified network. Nginx will serve the application on port `80`.
-
-```bash
-# Start all services in detached mode
-docker-compose up --build -d
-
-# View logs (optional)
-docker-compose logs -f
-
-```
-
-> **Access the Lab:** Open your browser and navigate to `http://localhost`
-
-### 2. Run in Production (AWS/VPS) - Automated
-
-For production deployment with SSL (HTTPS) and auto-configuration, we provide an automated script.
-
-**⚠️ Prerequisite:**
-Before running the script, ensure you have:
-
-1. Associated an **Elastic IP** with your AWS EC2 instance.
-2. Linked your **Domain Name** (A Record) to that Elastic IP in your DNS provider (e.g., Namecheap).
-
-**Deployment Steps:**
-Simply run the included setup script. It will handle System Updates, Docker Installation, SSL Certificates (Let's Encrypt), and Nginx Configuration automatically.
-
-```bash
-# 1. Give execution permission (first time only)
-chmod +x setup.sh
-
-# 2. Run the script
-./setup.sh
-
-```
-
-> The script will ask for your domain name and configure the entire lab automatically.
-
-### 3. Stop the Environment
-
-To stop all containers and remove the network:
-
-```bash
-docker-compose down
-
-```
+Unlike standard vulnerable web applications, this platform focuses exclusively on **Authentication Security**, providing a comparative analysis of legacy protocols versus hardware-bound credentials (FIDO2/WebAuthn).
 
 ---
 
-## Automated Testing & QA
+## System Architecture
 
-This project maintains rigorous quality standards using a CI/CD pipeline (GitHub Actions). You can also run these tests locally to verify system integrity.
+The project follows a decoupled, containerized architecture designed for consistent deployment across local and cloud environments:
 
-### Backend Security Tests (Jest & Supertest)
+* **Frontend (Victim UI)**: A React/Vite SPA with a "Security-Ops" aesthetic. It implements active client-side defenses (DOM/Hostname analysis).
+* **Backend (Security Engine)**: A Node.js/Express API handling session management, cryptographic WebAuthn challenges, and active threat detection.
+* **Database**: PostgreSQL for persistent storage and an active **Token Blacklist** for immediate session revocation.
+* **Infrastructure**: Nginx acting as a Reverse Proxy with Docker Compose for full-stack orchestration.
 
-Validates the API endpoints, authentication logic (Level 1 vs Level 2), and database interactions.
 
-```bash
-cd backend
-npm test
 
-```
+---
 
-### Client E2E Tests (Playwright)
+## Research Scenarios (The 5 Levels)
 
-Simulates a real user navigating through the application. It verifies that critical attack surfaces (Login Forms, Dashboard) are rendered correctly.
+The laboratory is structured into five levels, representing the evolution of web security:
 
-```bash
-cd client
-# Install browsers (first time only)
-npx playwright install
+### 1. Vulnerable Implementations
+* **Level 1: Legacy Auth (Cookies)**: State-based sessions using `HttpOnly` cookies. High susceptibility to session hijacking via proxy forwarding.
+* **Level 2: Modern SPA (JWT)**: Stateless JSON Web Tokens. INTERCEPT-ready during the initial handshake in non-hardened environments.
 
-# Run the navigation tests
-npx playwright test
+### 2. Defended Implementations
+* **Level 3: Server-Side Heuristics**: Inspects HTTP headers (`Host`, `X-Forwarded-For`) to detect discrepancies between client intent and request origin.
+* **Level 4: Client-Side Integrity (Domain Guard)**: JavaScript execution verifies the `window.location.hostname` against a whitelist, neutralizing proxy-based phishing.
 
-```
+### 3. Immune Implementation
+* **Level 5: Hardware-Bound Auth (FIDO2)**: Uses **WebAuthn/FIDO2** to cryptographically bind authentication to the origin. This renders AiTM attacks mathematically impossible as proxies cannot forge the origin signature.
+
+---
+
+## Automated Deployment
+
+The project includes a **Unified Setup Script** (`setup.sh`) that automates environment configuration, dependency checks, and security provisioning.
+
+### Quick Start
+1.  **Ensure Docker Desktop is running**.
+2.  **Run the initializer**:
+    ```bash
+    chmod +x setup.sh
+    ./setup.sh
+    ```
+3.  **Select your mode**:
+    * **Option 1 (Local)**: Deploys to `http://localhost`.
+    * **Option 2 (Production)**: Automates **SSL (Certbot/HTTPS)** generation and deploys to your custom domain on AWS/VPS.
+
+---
+
+## Forensic Auditing & Logging
+
+To support academic research and threat analysis, the backend generates real-time forensic audit trails in the `backend/logs/` directory:
+
+* **`terminated.txt`**: Records successful session revocations, including the full revoked token for replay-attack testing.
+* **`blocked_attempts.txt`**: Logs detailed metrics of blocked attackers, including **IP Address**, **User-Agent**, and **Geographic Metadata**.
+
+---
+
+## Technical Stack
+
+| Component | Technology | Description |
+| :--- | :--- | :--- |
+| **Frontend** | React 18, Vite | High-performance UI with custom security themes. |
+| **Backend** | Node.js, Express | Security-hardened REST API. |
+| **Database** | PostgreSQL 14 | Relational storage with active session blacklisting. |
+| **Auth** | SimpleWebAuthn | FIDO2/WebAuthn server-side implementation. |
+| **Infrastructure** | Docker, Nginx | Container orchestration and SSL termination. |
 
 ---
 
 ## Project Structure
 
-This laboratory is architected into two distinct tiers:
+```text
+/
+├── backend/            # API Logic, Database Models & Forensic Logs
+│   ├── logs/           # Audit trails (terminated.txt, blocked_attempts.txt)
+│   ├── middleware/     # Active defense (Blacklist, ProxyDetect)
+├── client/             # Frontend React Application & Nginx Config
+│   ├── nginx.conf      # Routing & Production SSL configurations
+│   └── src/utils/      # Developer Branding & Console Signatures
+├── setup.sh            # Multi-OS Automation Script (Local/Prod)
+├── docker-compose.yml  # Production-ready orchestration (Ports 80/443)
+└── .env.example        # Environment variable template
 
-* **[Backend API (Node.js/Express)](./backend/README.MD):** Handles the core security logic, including Hybrid Auth strategies, global rate limiting, and the **Active Session Revocation** engine.
-* **[Client Interface (React 19)](./client/README.MD):** A modern dashboard that acts as the "victim" application. It implements specific vulnerabilities (XSS surfaces in Level 2) and defenses (HttpOnly Cookies in Level 1) to test AiTM resilience.
-
----
-
-## Lab Missions
-
-* **Level 1 (Legacy/Cookies):** Simulates enterprise environments using `application/x-www-form-urlencoded` payloads and **HttpOnly cookies**. This level tests defenses against XSS but remains vulnerable to proxy-based session cookie theft.
-* **Level 2 (Modern/Tokens):** Simulates modern SPA authentication using `application/json` payloads and **JWTs stored in LocalStorage**. This level allows for testing token theft via XSS and analyzing the efficacy of short-lived tokens.
-* **MFA Module:** Integrated TOTP logic to analyze how multi-factor authentication acts as a secondary barrier against real-time session hijacking.
-
----
-
-## Key Security Features
-
-* **Active Session Revocation (Blacklisting):** Unlike standard stateless JWT implementations, this lab features a server-side revocation list. Upon logout, session identifiers are blacklisted in PostgreSQL, neutralizing stolen tokens immediately.
-* **Hybrid Protocol Support:** The architecture dynamically handles diverse data streams—enforcing `x-www-form-urlencoded` for legacy tiers and `application/json` for modern tiers—to accurately simulate heterogeneous corporate environments.
-* **Synchronized Termination Logic:** Implements a robust "Kill Switch" protocol that simultaneously purges client-side storage and invokes server-side revocation, ensuring total session death across the network.
-
----
-
-## Future Roadmap
-
-* **Evilginx & Proxy Fingerprinting:** Detecting reverse proxies via TLS fingerprinting and header analysis.
-* **HTTP Header Security:** Identifying unauthorized `X-Forwarded-For` anomalies.
-* **Base URI Detection:** Detecting DOM-based phishing injections via JavaScript.
+```
 
 ---
 
 ## ⚠️ Disclaimer
 
-This software is developed strictly for **educational and research purposes** as part of a Master's Thesis. It contains intentional configurations to simulate vulnerabilities. Please use it responsibly within a controlled, isolated environment.
-
+This software is a research prototype developed for educational and academic purposes. It contains code designed to demonstrate vulnerabilities. Do not deploy the vulnerable configurations (Levels 1 & 2) in a production environment exposed to the public internet without proper firewalling.
