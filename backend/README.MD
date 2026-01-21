@@ -11,6 +11,7 @@ This directory contains the server-side logic for the Phishing Defense Lab. It a
 * **Runtime:** Node.js & Express
 * **Database:** PostgreSQL (with `pg` pool)
 * **Security:** `bcryptjs` (Hashing), `jsonwebtoken` (JWT), `speakeasy` (MFA/TOTP)
+* **Auth Standards:** SimpleWebAuthn (FIDO2/WebAuthn Server)
 * **Logging:** Native File System (`fs`) for forensic audit trails
 * **Architecture:** MVC (Model-View-Controller)
 
@@ -65,6 +66,10 @@ DB_PORT=5432
 JWT_SECRET=super_secret_unified_key_2026
 CORS_ORIGIN=http://localhost:5173
 
+# FIDO2 Configuration (Critical for v1.1.0+)
+RP_ID=localhost
+EXPECTED_ORIGINS=http://localhost:5173,http://localhost
+
 ```
 
 ### 4. Start the Server
@@ -76,6 +81,17 @@ npm run dev
 
 ```
 
+### 5. Run Security Tests
+
+To verify the security fixes and authentication logic:
+
+```bash
+npm test
+
+```
+
+*(Note: Test mode enforces a fixed admin password `lab123` for deterministic results.)*
+
 ---
 
 ## Automated Initialization (Zero-Config)
@@ -83,16 +99,15 @@ npm run dev
 When `server.js` starts, it triggers `config/initDb.js` which automatically:
 
 1. **Checks Database:** Verifies connection to your local PostgreSQL instance.
-2. **Creates Schema:** Automatically creates the `users` table and `token_blacklist` table if they don't exist.
+2. **Creates Schema:** Automatically creates the `users`, `authenticators`, and `token_blacklist` tables.
 3. **Seeds Admin:** Injects the default admin account.
 
 **⚠️ Admin Credentials:**
 
 * **Email:** `admin@lab.com`
 * **Password:** **GENERATED ON STARTUP**
-> **Look at your terminal output!** The system generates a unique 16-character secure password every time the database is re-initialized. This ensures maximum security for the lab environment.
 
-
+> **Look at your terminal output!** The system generates a unique 16-character secure password every time the database is re-initialized (unless in Test Mode). This ensures maximum security for the lab environment.
 
 ---
 
@@ -103,19 +118,29 @@ Based on the project file system:
 * **`config/`**:
 * `db.js`: PostgreSQL connection pool configuration.
 * `initDb.js`: Automation script for schema creation and admin seeding.
+* `env.js`: Centralized configuration loader.
+
+
 * **`controllers/`**:
 * `authController.js`: General auth logic (Admin login, User management).
 * `level1Controller.js`: Logic for Legacy Auth (Cookie-based).
 * `level2Controller.js`: Logic for Modern Auth (Token-based).
-* `mfaController.js`: Handling TOTP generation and verification.
+* `fidoController.js`: Handling WebAuthn registration and authentication.
+
+
 * **`middleware/`**:
 * `checkBlacklist.js`: Interceptor that blocks revoked tokens (Active Defense) and logs incidents.
+
+
 * **`logs/` (Auto-Generated)**:
-* Stores forensic evidence of security events (see details below).
-* **`routes/`**:
-* `auth.js`: API endpoints definitions.
+* Stores forensic evidence of security events.
+
+
 * **`utils/`**:
-* `helpers.js`: Shared utility functions including token generation and revocation logic.
+* `helpers.js`: Shared utility functions.
+* `envParser.js`: Helper to parse environment lists safely.
+
+
 
 ---
 
@@ -140,5 +165,4 @@ The system automatically generates audit trails in the `logs/` directory to demo
 * **`logs/blocked_attempts.txt`**:
 * Records detailed metrics when a revoked token attempts to access the API.
 * Captures: **IP Address**, **Country** (via Headers), **User-Agent**, and **Request Path**.
-
 

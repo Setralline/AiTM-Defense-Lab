@@ -9,6 +9,11 @@ This is the frontend application for the Phishing Defense Lab. It simulates a re
 
 ## Project Overview
 
+<div align="center">
+  <img src="src/assets/ui-preview.png" alt="Phishing Lab Dashboard UI" width="800" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
+  <p><em>Figure 1: The "Security-Ops" Dashboard showing the 5 Security Levels</em></p>
+</div>
+
 The interface features a "Security-Ops" theme designed to simulate a high-security environment. It allows researchers to toggle between different "Security Levels" to observe how specific authentication mechanisms respond to interception attacks.
 
 ### Key Capabilities
@@ -91,6 +96,47 @@ docker run -p 80:80 phishing-lab-client
 
 ---
 
+## 🧪 Running Tests
+
+The frontend includes a comprehensive testing suite combining **Vitest** for unit testing and **Playwright** for end-to-end (E2E) verification.
+
+### Unit Tests (Vitest)
+
+Checks individual component logic and isolated utility functions.
+
+```bash
+# Run all unit tests once
+npm run test:unit
+
+# Run in watch mode (for development)
+npm run test:unit:watch
+
+```
+
+### End-to-End Tests (Playwright)
+
+Simulates real user interactions (browsing, clicking, authenticating) across different browser engines.
+
+```bash
+# Run all E2E tests (Headless mode)
+npm run test:e2e
+
+# Run with interactive UI (See the browser actions live)
+npm run test:e2e:ui
+
+```
+
+### Full Test Suite
+
+Execute the entire pipeline (Unit + E2E):
+
+```bash
+npm test
+
+```
+
+---
+
 ## Project Structure
 
 The codebase follows a scalable feature-based architecture:
@@ -119,3 +165,4 @@ While the current implementation covers core AiTM defense mechanisms, future exp
 ---
 
 **Note**: This tool is developed strictly for **educational and research purposes**. It is designed to demonstrate how to *defend* against attacks, not how to conduct them.
+
