@@ -136,7 +136,7 @@ exports.createUser = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      isAdmin: isAdmin || false
+      isAdmin: false
     });
 
     res.status(201).json({ success: true, user });
