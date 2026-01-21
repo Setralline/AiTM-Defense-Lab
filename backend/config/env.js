@@ -1,4 +1,3 @@
-// backend/config/env.js
 require('dotenv').config();
 
 module.exports = {
@@ -12,7 +11,7 @@ module.exports = {
     jwtSecret: process.env.JWT_SECRET || 'super_secret_unified_key_2026',
     jwtExpiresIn: '1h',
     rpId: 'localhost',
-    expectedOrigin: 'http://localhost:5173'
+    expectedOrigin: ['http://localhost:5173', 'http://localhost']
   },
   db: {
     connectionString: process.env.DATABASE_URL,

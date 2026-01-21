@@ -17,8 +17,6 @@ const fidoController = {
     try {
       let user = await User.findByEmail(email);
       
-      // [FIX] REMOVED AUTO-REGISTRATION LOGIC
-      // If user doesn't exist, reject immediately
       if (!user) {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
@@ -39,10 +37,15 @@ const fidoController = {
   registerStart: async (req, res) => {
     try {
       const user = await User.findByEmail(req.body.email);
+      
+      // [FIX] Convert Email to a proper Buffer (User Handle)
+      // Old Buggy Code: userID: isoBase64URL.toBuffer(user.email),
+      const userHandle = Buffer.from(user.email); // Standard UTF-8 Buffer
+
       const options = await generateRegistrationOptions({
         rpName: 'Cyber Lab',
         rpID: config.security.rpId,
-        userID: isoBase64URL.toBuffer(user.email),
+        userID: userHandle, // Correctly pass the Buffer
         userName: user.email,
         attestationType: 'none',
       });
@@ -73,7 +76,6 @@ const fidoController = {
         });
         await User.enableFido(user.id);
 
-        // Return token so user stays logged in
         const token = jwt.sign({ id: user.id, email }, config.security.jwtSecret, { expiresIn: '1h' });
         res.json({ verified: true, token, user });
       }
