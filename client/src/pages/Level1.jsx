@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { FaUserAstronaut, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa';
 import authService from '../services/authService';
 
-// UI Components (BEM Architecture)
+// UI Components
 import Card from '../components/layout/Card';
 import InputGroup from '../components/ui/InputGroup';
 import Button from '../components/ui/Button';
@@ -25,12 +25,9 @@ import Dashboard from '../components/features/Dashboard';
 const Level1 = ({ user, setUser }) => {
   const navigate = useNavigate();
 
-  // =========================================================================
-  // STATE MANAGEMENT
-  // =========================================================================
-  const [step, setStep] = useState(1); // 1: Credentials, 2: MFA
+  const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [tempToken, setTempToken] = useState(''); // Temporary token for MFA handover
+  const [tempToken, setTempToken] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -38,45 +35,28 @@ const Level1 = ({ user, setUser }) => {
     rememberMe: false
   });
 
-  // =========================================================================
-  // 1. SESSION SYNCHRONIZATION
-  // =========================================================================
   useEffect(() => {
     let isMounted = true;
     const checkSession = async () => {
       try {
         const data = await authService.getCurrentUser();
         if (isMounted && data.user) setUser(data.user);
-      } catch (err) {
-        // Silent failure expected if no session exists
-      }
+      } catch (err) { }
     };
     checkSession();
     return () => { isMounted = false; };
   }, [setUser]);
-
-  // =========================================================================
-  // 2. HANDLERS & LOGIC
-  // =========================================================================
 
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
   };
 
-  /**
-   * Updates local state upon successful authentication.
-   * Defined BEFORE usage to prevent ReferenceErrors.
-   */
   const finalizeLogin = (res, tId) => {
     setUser(res.user);
     toast.success(`Access Granted. Welcome, ${res.user.name}`, { id: tId });
   };
 
-  /**
-   * Main Login Flow
-   * Handles both initial credential exchange and secondary MFA verification.
-   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -84,14 +64,17 @@ const Level1 = ({ user, setUser }) => {
 
     try {
       if (step === 1) {
-        // ---------------------------------------------------
-        // STEP A: LEGACY FORM SUBMISSION
-        // ---------------------------------------------------
-        // Mimic legacy behavior using URLSearchParams
+        // [FIX] FRONTEND PASSWORD VALIDATION
+        if (formData.password.length < 8) {
+          toast.error('Password must be at least 8 characters.', { id: tId });
+          setIsLoading(false);
+          return;
+        }
+
         const params = new URLSearchParams();
         params.append('email', formData.email.trim());
         params.append('password', formData.password);
-        params.append('rememberMe', formData.rememberMe); // Backend sets Cookie Max-Age based on this
+        params.append('rememberMe', formData.rememberMe);
 
         const res = await authService.loginLevel1(params);
 
@@ -103,19 +86,17 @@ const Level1 = ({ user, setUser }) => {
           finalizeLogin(res, tId);
         }
       } else {
-        // ---------------------------------------------------
-        // STEP B: MFA VERIFICATION
-        // ---------------------------------------------------
         const res = await authService.verifyMfa({
           email: formData.email.trim(),
           code: formData.code.trim(),
           temp_token: tempToken,
-          rememberMe: formData.rememberMe // Ensure MFA flow also respects persistence preference
+          rememberMe: formData.rememberMe
         });
 
         if (res.success) finalizeLogin(res, tId);
       }
     } catch (err) {
+      // The Axios interceptor now passes the specific error message here
       toast.error(err.response?.data?.message || 'Access Denied.', { id: tId });
     } finally {
       setIsLoading(false);
@@ -136,11 +117,6 @@ const Level1 = ({ user, setUser }) => {
     }
   };
 
-  // =========================================================================
-  // 3. UI RENDERING
-  // =========================================================================
-
-  // If authenticated, show the Dashboard "Victim" View
   if (user) return <Dashboard user={user} setUser={setUser} onLogout={handleLogout} />;
 
   return (
@@ -164,8 +140,6 @@ const Level1 = ({ user, setUser }) => {
               onChange={handleChange}
               required
             />
-
-            {/* Persistence Option */}
             <Checkbox
               label="Remember terminal (Extend Session)"
               name="rememberMe"
@@ -190,12 +164,7 @@ const Level1 = ({ user, setUser }) => {
           <Button type="submit" disabled={isLoading} fullWidth>
             {isLoading ? 'PROCESSING...' : (step === 1 ? 'INITIATE' : 'VERIFY')}
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => navigate('/')}
-            fullWidth
-          >
+          <Button type="button" variant="secondary" onClick={() => navigate('/')} fullWidth>
             <FaArrowLeft /> RETURN TO BASE
           </Button>
         </div>

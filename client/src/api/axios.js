@@ -11,8 +11,8 @@ import axios from 'axios';
 // 1. Environment-Aware Base URL
 // - Development: Connects explicitly to the backend port (5000).
 // - Production: Uses relative path ('') relying on Nginx/Docker reverse proxying.
-const BASE_URL = import.meta.env.MODE === 'production' 
-  ? '' 
+const BASE_URL = import.meta.env.MODE === 'production'
+  ? ''
   : 'http://localhost:5000';
 
 /**
@@ -23,12 +23,7 @@ const BASE_URL = import.meta.env.MODE === 'production'
  */
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
-  
-  // CRITICAL: Enables transmission of HttpOnly cookies (Session ID).
   withCredentials: true,
-
-  // NOTE: 'Content-Type' is left undefined to allow automatic detection 
-  // (Form Data for Level 1 vs JSON for Level 2+).
   headers: {
     'Accept': 'application/json',
   },
@@ -42,25 +37,37 @@ const axiosInstance = axios.create({
  */
 axiosInstance.interceptors.response.use(
   (response) => {
-    // Transparently pass successful responses
     return response;
   },
   async (error) => {
     const originalRequest = error.config;
 
-    // CHECK: Is this error from the initial session hydration check?
-    // If yes, we expect a 401 (guest user), so we suppress the redirect.
+    // CHECK 1: Is this a session check? (Don't redirect guests)
     const isSessionCheck = originalRequest.url && originalRequest.url.includes('/auth/me');
 
+    // [FIX] CHECK 2: Is this a Login Attempt?
+    // We must NOT redirect on login failures (wrong password), 
+    // otherwise the user sees no error message.
+    const isLoginAttempt = originalRequest.url && (
+      originalRequest.url.includes('/auth/level') ||      // Level 1-4 Logins
+      originalRequest.url.includes('/auth/fido/login') || // FIDO2 Login
+      originalRequest.url.includes('/auth/admin/login')   // Admin Login
+    );
+
     // 2. Active Session Termination Logic
-    // If a legitimate request returns 401 (Unauthorized), the session is dead.
-    if (error.response?.status === 401 && !originalRequest._retry && !isSessionCheck) {
+    // Only redirect if it's NOT a login attempt and NOT a session check
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isSessionCheck &&
+      !isLoginAttempt // <--- ADDED THIS CHECK
+    ) {
       console.warn('[Security Protocol] Session invalidated by server. Purging local state.');
-      
+
       // A. Purge Client-Side Artifacts (Level 2-5 Tokens)
       localStorage.removeItem('auth_token');
       sessionStorage.removeItem('auth_token');
-      
+
       // B. Force Security Redirect
       // Uses window.location to force a full browser refresh (clearing memory).
       if (window.location.pathname !== '/') {
@@ -69,10 +76,10 @@ axiosInstance.interceptors.response.use(
     }
 
     // 3. Error Sanitization
-    // Mask raw server errors with user-friendly messages for the UI.
+    // Pass the specific error message (e.g., "Invalid credentials") to the UI
     const cleanMessage = error.response?.data?.message || 'Secure connection failed.';
     error.sanitizedMessage = cleanMessage;
-    
+
     return Promise.reject(error);
   }
 );

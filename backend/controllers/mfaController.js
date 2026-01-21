@@ -1,6 +1,8 @@
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 const User = require('../models/User');
+// [FIX] Import generateToken helper
+const { generateToken } = require('../utils/helpers');
 
 exports.enableMFA = async (req, res) => {
   const { email } = req.body;
@@ -10,7 +12,7 @@ exports.enableMFA = async (req, res) => {
 
     // Save secret to DB
     await User.updateMfaSecret(user.id, secret.base32);
-
+  
     // Generate QR
     const qrImage = await qrcode.toDataURL(secret.otpauth_url);
     res.json({ success: true, secret: secret.base32, qrCode: qrImage });
@@ -29,8 +31,15 @@ exports.verifyMfa = async (req, res) => {
       token: code
     });
 
-    if (verified) res.json({ success: true, user });
-    else res.status(400).json({ message: 'Invalid 2FA Code' });
+    if (verified) {
+      // [FIX] Generate a fresh session token upon MFA success
+      const token = generateToken(user);
+
+      // [FIX] Return the token so the frontend can store it
+      res.json({ success: true, token, user });
+    } else {
+      res.status(400).json({ message: 'Invalid 2FA Code' });
+    }
   } catch (err) { res.status(500).json({ message: 'Verification Error' }); }
 };
 

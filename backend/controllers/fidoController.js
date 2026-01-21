@@ -16,12 +16,11 @@ const fidoController = {
     const { email, password } = req.body;
     try {
       let user = await User.findByEmail(email);
-      // Auto-register for lab convenience
+      
+      // [FIX] REMOVED AUTO-REGISTRATION LOGIC
+      // If user doesn't exist, reject immediately
       if (!user) {
-        const hashed = await bcrypt.hash(password, 10);
-        user = await User.create({ name: 'Operative', email, password: hashed });
-        const token = jwt.sign({ id: user.id, email }, config.security.jwtSecret, { expiresIn: '1h' });
-        return res.json({ status: 'success', token, user });
+        return res.status(401).json({ message: 'Invalid credentials' });
       }
 
       const isMatch = await bcrypt.compare(password, user.password);

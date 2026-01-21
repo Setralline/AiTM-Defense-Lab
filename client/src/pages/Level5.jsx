@@ -79,6 +79,13 @@ const Level5 = ({ user, setUser }) => {
     const tId = toast.loading('Verifying Credentials...');
 
     try {
+      // 1. Validate Password Length
+      if (formData.password.length < 8) {
+        toast.error('Password must be at least 8 characters.', { id: tId });
+        setIsLoading(false);
+        return;
+      }
+
       const res = await authService.fidoLoginWithPassword(
         formData.email.trim(),
         formData.password,
@@ -87,7 +94,7 @@ const Level5 = ({ user, setUser }) => {
 
       // Check if backend indicates a FIDO key exists
       if (res.status === 'fido_required' || (res.user && res.user.has_fido)) {
-        setStep(2); // Move to Hardware Challenge
+        setStep(2);
         toast.success('Credentials Valid. Touch Security Key.', { id: tId });
       } else {
         // If no FIDO key is enrolled, login directly so they can enroll inside
@@ -221,7 +228,6 @@ const Level5 = ({ user, setUser }) => {
         {/* Step 2: FIDO2 Interaction UI */}
         {step === 2 && (
           <div className="animate-fade-in" style={{ textAlign: 'center', padding: '20px 0' }}>
-
             <FaFingerprint
               style={{
                 fontSize: '4rem',
@@ -246,22 +252,11 @@ const Level5 = ({ user, setUser }) => {
               {isLoading ? 'PROCESSING...' : 'INITIATE'}
             </Button>
           ) : (
-            <Button
-              type="button"
-              onClick={handleFidoVerify}
-              variant="primary"
-              fullWidth
-            >
+            <Button type="button" onClick={handleFidoVerify} variant="primary" fullWidth>
               ACTIVATE KEY
             </Button>
           )}
-
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => step === 1 ? navigate('/') : setStep(1)}
-            fullWidth
-          >
+          <Button type="button" variant="secondary" onClick={() => step === 1 ? navigate('/') : setStep(1)} fullWidth>
             <FaArrowLeft /> {step === 1 ? 'RETURN TO BASE' : 'CANCEL'}
           </Button>
         </div>

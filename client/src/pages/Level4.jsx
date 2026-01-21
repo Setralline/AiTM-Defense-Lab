@@ -10,7 +10,7 @@ import InputGroup from '../components/ui/InputGroup';
 import Button from '../components/ui/Button';
 import Checkbox from '../components/ui/Checkbox';
 import Dashboard from '../components/features/Dashboard';
-import DomainGuard from '../components/features/DomainGuard'; // <--- The Client-Side Defense
+import DomainGuard from '../components/features/DomainGuard';
 
 /**
  * ------------------------------------------------------------------
@@ -23,13 +23,14 @@ import DomainGuard from '../components/features/DomainGuard'; // <--- The Client
  * - Mechanism: "Kills" the page/redirects if window.location.hostname != whitelist.
  * - Persistence: Handled via centralized authService.
  */
+
 const Level4 = ({ user, setUser }) => {
   const navigate = useNavigate();
 
   // =========================================================================
   // STATE MANAGEMENT
   // =========================================================================
-  const [step, setStep] = useState(1); // 1: Credentials, 2: MFA
+  const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [tempToken, setTempToken] = useState('');
   const [formData, setFormData] = useState({
@@ -48,14 +49,11 @@ const Level4 = ({ user, setUser }) => {
       try {
         const data = await authService.getCurrentUser();
         if (isMounted && data.user) setUser(data.user);
-      } catch (err) {
-        // Silent catch
-      }
+      } catch (err) { }
     };
     checkSession();
     return () => { isMounted = false; };
   }, [setUser]);
-
   // =========================================================================
   // 2. HANDLERS & LOGIC
   // =========================================================================
@@ -93,6 +91,13 @@ const Level4 = ({ user, setUser }) => {
         // ---------------------------------------------------
         // Uses 'v2' because the backend defense is not active here.
         // The protection is the <DomainGuard /> component below.
+        // [FIX] FRONTEND PASSWORD VALIDATION
+        if (formData.password.length < 8) {
+          toast.error('Password must be at least 8 characters.', { id: tId });
+          setIsLoading(false);
+          return;
+        }
+
         const res = await authService.loginModern(
           formData.email.trim(),
           formData.password,
@@ -140,7 +145,6 @@ const Level4 = ({ user, setUser }) => {
       navigate('/level4');
     }
   };
-
   // =========================================================================
   // 3. UI RENDERING
   // =========================================================================
@@ -149,7 +153,7 @@ const Level4 = ({ user, setUser }) => {
 
   return (
     <>
-      {/* 🛡️ ACTIVE DEFENSE: Runs silently in background checking window.location */}
+      {/* ACTIVE DEFENSE: Runs silently in background checking window.location */}
       <DomainGuard />
 
       <Card title={step === 1 ? "DOMAIN GUARD AUTH" : "2-FACTOR AUTH"}>
@@ -172,7 +176,6 @@ const Level4 = ({ user, setUser }) => {
                 onChange={handleChange}
                 required
               />
-
               <Checkbox
                 label="Stay Persistent (JWT)"
                 name="rememberMe"
@@ -192,17 +195,11 @@ const Level4 = ({ user, setUser }) => {
               autoFocus
             />
           )}
-
           <div className="form-actions">
             <Button type="submit" disabled={isLoading} fullWidth>
               {isLoading ? 'VERIFYING...' : (step === 1 ? 'SECURE LOGIN' : 'VERIFY')}
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => navigate('/')}
-              fullWidth
-            >
+            <Button type="button" variant="secondary" onClick={() => navigate('/')} fullWidth>
               <FaArrowLeft /> RETURN TO BASE
             </Button>
           </div>
