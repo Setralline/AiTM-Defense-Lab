@@ -11,6 +11,9 @@ const { createInitialAdmin } = require('./config/initDb');
 
 const app = express();
 
+// Enable trust proxy so rate limiter can see correct client IPs behind Nginx/Evilginx
+app.set('trust proxy', 1);
+
 // =========================================================================
 // Security Middleware (OWASP)
 // =========================================================================
