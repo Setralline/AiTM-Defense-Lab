@@ -23,7 +23,9 @@ test.describe('Phishing Lab UI Navigation & Integrity', () => {
   test('Home Page - should display Mission Control', async ({ page }) => {
     await expect(page).toHaveTitle(/Phishing/i);
     await expect(page.getByText('SELECT MISSION')).toBeVisible();
-    await expect(page.getByText('UNAUTHORIZED ACCESS PROHIBITED')).toBeVisible();
+    
+    // [UPDATED] Check for the new Admin Panel button instead of the brittle footer text
+    await expect(page.getByText('ADMIN PANEL')).toBeVisible(); 
   });
 
   /**
@@ -80,7 +82,6 @@ test.describe('Phishing Lab UI Navigation & Integrity', () => {
     await expect(page.getByText('DOMAIN GUARD AUTH')).toBeVisible();
     
     // Verify the Client-Side defense component didn't crash the page on localhost
-    // (Since we are on localhost, the defense should allow access)
     await expect(page.getByPlaceholder('Passcode')).toBeVisible();
   });
 
