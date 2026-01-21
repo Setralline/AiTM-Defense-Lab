@@ -5,7 +5,7 @@ import { FaGlobe, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa';
 import authService from '../services/authService';
 import { validateLoginForm } from '../utils/validation';
 
-// UI Components (BEM Architecture)
+// UI Components
 import Card from '../components/layout/Card';
 import InputGroup from '../components/ui/InputGroup';
 import Button from '../components/ui/Button';
@@ -30,8 +30,9 @@ const Level4 = ({ user, setUser }) => {
   // =========================================================================
   // STATE MANAGEMENT
   // =========================================================================
-  const [step, setStep] = useState(1); // 1: Credentials, 2: MFA
+  const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
   const [tempToken, setTempToken] = useState('');
   const [formData, setFormData] = useState({
     email: '',
@@ -41,55 +42,44 @@ const Level4 = ({ user, setUser }) => {
   });
 
   // =========================================================================
-  // 1. SESSION SYNCHRONIZATION
+  // 1. SESSION & SECURITY SYNC
   // =========================================================================
   useEffect(() => {
     let isMounted = true;
-    const checkSession = async () => {
+    const initializeLevel = async () => {
       try {
+        // التحقق من الجلسة الحالية
         const data = await authService.getCurrentUser();
         if (isMounted && data.user) setUser(data.user);
       } catch (err) {
         // Silent catch
       }
     };
-    checkSession();
+    initializeLevel();
     return () => { isMounted = false; };
   }, [setUser]);
 
   // =========================================================================
-  // 2. HANDLERS & LOGIC
+  // 2. HANDLERS
   // =========================================================================
-
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
   };
 
-  /**
-   * Updates local state upon successful authentication.
-   * Defined BEFORE usage to prevent ReferenceErrors.
-   */
   const finalizeLogin = (res, tId) => {
-    // Auth logic is handled by the service. We just update the UI.
     const { user: userData } = res;
     setUser(userData);
     toast.success(`Welcome back, ${userData.name}`, { id: tId });
   };
 
-  /**
-   * Main Login Flow
-   * Relies on the standard 'v2' endpoint, as the defense is handled 
-   * entirely by the <DomainGuard /> component in the DOM.
-   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    const tId = toast.loading(step === 1 ? 'Checking Domain Integrity...' : 'Validating MFA...');
+    const tId = toast.loading(step === 1 ? 'Authenticating...' : 'Validating MFA...');
 
     try {
       if (step === 1) {
-        // [FIX] FRONTEND PASSWORD VALIDATION (CENTRALIZED)
         const validationError = validateLoginForm(formData.email, formData.password);
         if (validationError) {
           toast.error(validationError, { id: tId });
@@ -97,11 +87,6 @@ const Level4 = ({ user, setUser }) => {
           return;
         }
 
-        // ---------------------------------------------------
-        // STEP A: CREDENTIAL EXCHANGE
-        // ---------------------------------------------------
-        // Uses 'v2' because the backend defense is not active here.
-        // The protection is the <DomainGuard /> component below.
         const res = await authService.loginModern(
           formData.email.trim(),
           formData.password,
@@ -112,21 +97,17 @@ const Level4 = ({ user, setUser }) => {
         if (res.mfa_required) {
           setTempToken(res.temp_token);
           setStep(2);
-          toast.success('Domain Verified. Credentials Accepted.', { id: tId });
+          toast.success('Credentials Accepted.', { id: tId });
         } else {
           finalizeLogin(res, tId);
         }
       } else {
-        // ---------------------------------------------------
-        // STEP B: MFA VERIFICATION
-        // ---------------------------------------------------
         const res = await authService.verifyMfa({
           email: formData.email.trim(),
           code: formData.code.trim(),
           temp_token: tempToken,
           rememberMe: formData.rememberMe
         });
-
         if (res.success) finalizeLogin(res, tId);
       }
     } catch (err) {
@@ -145,7 +126,7 @@ const Level4 = ({ user, setUser }) => {
     } finally {
       setUser(null);
       setStep(1);
-      toast.success('See you soon.', { id: tId, icon: '👋' });
+      toast.success('Logged out.', { id: tId });
       navigate('/level4');
     }
   };
@@ -156,68 +137,68 @@ const Level4 = ({ user, setUser }) => {
 
   if (user) return <Dashboard user={user} setUser={setUser} onLogout={handleLogout} />;
 
+  if (!isVerified) {
+    return (
+      <DomainGuard onVerified={() => setIsVerified(true)} />
+    );
+  }
+
   return (
-    <>
-      {/* 🛡️ ACTIVE DEFENSE: Runs silently in background checking window.location */}
-      <DomainGuard />
-
-      <Card title={step === 1 ? "DOMAIN GUARD AUTH" : "2-FACTOR AUTH"}>
-        <form onSubmit={handleSubmit}>
-          {step === 1 ? (
-            <>
-              <InputGroup
-                icon={<FaGlobe />}
-                type="email"
-                name="email"
-                placeholder="Email"
-                onChange={handleChange}
-                required
-              />
-              <InputGroup
-                icon={<FaKey />}
-                type="password"
-                name="password"
-                placeholder="Passcode"
-                onChange={handleChange}
-                required
-              />
-
-              <Checkbox
-                label="Stay Persistent (JWT)"
-                name="rememberMe"
-                checked={formData.rememberMe}
-                onChange={handleChange}
-              />
-            </>
-          ) : (
+    <Card title={step === 1 ? "DOMAIN GUARD AUTH" : "2-FACTOR AUTH"}>
+      <form onSubmit={handleSubmit}>
+        {step === 1 ? (
+          <>
             <InputGroup
-              icon={<FaShieldAlt />}
-              type="text"
-              name="code"
-              placeholder="6-Digit Token"
+              icon={<FaGlobe />}
+              type="email"
+              name="email"
+              placeholder="Email"
               onChange={handleChange}
-              maxLength={6}
-              highlight
-              autoFocus
+              required
             />
-          )}
+            <InputGroup
+              icon={<FaKey />}
+              type="password"
+              name="password"
+              placeholder="Passcode"
+              onChange={handleChange}
+              required
+            />
+            <Checkbox
+              label="Stay Persistent (JWT)"
+              name="rememberMe"
+              checked={formData.rememberMe}
+              onChange={handleChange}
+            />
+          </>
+        ) : (
+          <InputGroup
+            icon={<FaShieldAlt />}
+            type="text"
+            name="code"
+            placeholder="6-Digit Token"
+            onChange={handleChange}
+            maxLength={6}
+            highlight
+            autoFocus
+          />
+        )}
 
-          <div className="form-actions">
-            <Button type="submit" disabled={isLoading} fullWidth>
-              {isLoading ? 'VERIFYING...' : (step === 1 ? 'SECURE LOGIN' : 'VERIFY')}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => navigate('/')}
-              fullWidth
-            >
-              <FaArrowLeft /> RETURN TO BASE
-            </Button>
-          </div>
-        </form>
-      </Card>
-    </>
+        <div className="form-actions">
+          <Button type="submit" disabled={isLoading} fullWidth>
+            {isLoading ? 'VERIFYING...' : (step === 1 ? 'SECURE LOGIN' : 'VERIFY')}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate('/')}
+            fullWidth
+          >
+            <FaArrowLeft /> RETURN TO BASE
+          </Button>
+        </div>
+      </form>
+    </Card>
   );
 };
 

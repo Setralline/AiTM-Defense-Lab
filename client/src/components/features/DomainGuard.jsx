@@ -1,51 +1,32 @@
+// client/src/components/features/DomainGuard.jsx
 import { useEffect } from 'react';
 
-/**
- * DomainGuard Component - Dynamic Lab Defense
- * Fetches the authorized domain from the backend and kills the page if a mismatch is detected.
- */
-const DomainGuard = () => {
+const DomainGuard = ({ onVerified }) => {
   useEffect(() => {
-    const verifyIntegrity = async () => {
+    const checkDomain = async () => {
       try {
-        // 1. Fetch the official configuration from the backend (Dynamic from Docker)
         const response = await fetch('/api/config/security');
         const config = await response.json();
         
         const authorizedDomain = config.allowedDomain;
         const currentHostname = window.location.hostname;
 
-        // 2. Define local safety bypass for development
-        const isLocal = currentHostname === "localhost" || currentHostname === "127.0.0.1";
+        if (currentHostname !== authorizedDomain && currentHostname !== "localhost") {
 
-        // 3. Security Check: If not local and hostname doesn't match the backend's allowedDomain
-        if (!isLocal && currentHostname !== authorizedDomain) {
-          
-          // CRITICAL: Halt all network activity and script execution
-          window.stop(); 
-          
-          // CRITICAL: Clear the entire DOM (Head and Body) to leave a blank white page
+          window.stop();
           document.documentElement.innerHTML = ""; 
-          
-          // Overwrite with clean blank content to neutralize the proxy
-          document.write("<html><body style='background:white;'></body></html>");
-
-          console.error("SECURITY ALERT: Domain mismatch. Execution halted.");
-          
-          // Throw error to break the React component lifecycle
-          throw new Error("Security Kill Switch Activated");
+          return;
         }
+
+        if (onVerified) onVerified();
       } catch (err) {
-        // Silent fail or log internal error
-        console.warn("Domain integrity check bypassed or failed to initialize.");
+        console.error("Security probe failed");
       }
     };
+    checkDomain();
+  }, [onVerified]);
 
-    verifyIntegrity();
-  }, []);
-
-  // This component is invisible; it only monitors domain integrity
-  return null; 
+  return null;
 };
 
 export default DomainGuard;
