@@ -43,6 +43,12 @@ services:
       DATABASE_URL: postgres://${DB_USER:-postgres}:${DB_PASSWORD:-lab_password_123}@db:5432/${DB_NAME:-phishing_lab_db}
       JWT_SECRET: ${JWT_SECRET:-docker_local_secret_key_2026}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      
+      # [FIX] CRITICAL FIDO2 VARIABLES
+      # These pass the domain settings from your .env file into the container
+      RP_ID: ${RP_ID:-localhost}
+      EXPECTED_ORIGINS: ${EXPECTED_ORIGINS:-http://localhost}
+      
     volumes:
       - ./backend/logs:/app/logs
     networks:
@@ -57,8 +63,9 @@ services:
     restart: always
     ports:
       - "80:80"    # HTTP
-      - "443:443"  # HTTPS for prd
+      - "443:443"  # HTTPS (Production)
     volumes:
+      # Mount SSL certs so Nginx can see them (Read-Only)
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - backend

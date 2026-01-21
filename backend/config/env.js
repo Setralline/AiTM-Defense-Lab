@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { getOrigins } = require('../utils/envParser');
 
 module.exports = {
   app: {
@@ -8,10 +9,12 @@ module.exports = {
   },
   security: {
     allowedHosts: ['thesis-osamah-lab.live', 'localhost:5000', '127.0.0.1:5000'],
+    
     jwtSecret: process.env.JWT_SECRET || 'super_secret_unified_key_2026',
     jwtExpiresIn: '1h',
-    rpId: 'localhost',
-    expectedOrigin: ['http://localhost:5173', 'http://localhost']
+    rpId: process.env.RP_ID || 'localhost',
+    
+    expectedOrigin: getOrigins()
   },
   db: {
     connectionString: process.env.DATABASE_URL,
