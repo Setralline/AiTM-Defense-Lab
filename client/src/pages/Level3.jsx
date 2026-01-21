@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FaUserShield, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa';
 import authService from '../services/authService';
+import { validateLoginForm } from '../utils/validation';
 
+// UI Components (BEM Architecture)
 import Card from '../components/layout/Card';
 import InputGroup from '../components/ui/InputGroup';
 import Button from '../components/ui/Button';
@@ -25,7 +27,10 @@ import Dashboard from '../components/features/Dashboard';
 const Level3 = ({ user, setUser }) => {
   const navigate = useNavigate();
 
-  const [step, setStep] = useState(1);
+  // =========================================================================
+  // STATE MANAGEMENT
+  // =========================================================================
+  const [step, setStep] = useState(1); // 1: Credentials, 2: MFA
   const [isLoading, setIsLoading] = useState(false);
   const [tempToken, setTempToken] = useState('');
   const [formData, setFormData] = useState({
@@ -35,29 +40,47 @@ const Level3 = ({ user, setUser }) => {
     rememberMe: false
   });
 
+  // =========================================================================
+  // 1. SESSION SYNCHRONIZATION
+  // =========================================================================
   useEffect(() => {
     let isMounted = true;
     const checkSession = async () => {
       try {
         const data = await authService.getCurrentUser();
         if (isMounted && data.user) setUser(data.user);
-      } catch (err) {}
+      } catch (err) {
+        // Silent failure expected
+      }
     };
     checkSession();
     return () => { isMounted = false; };
   }, [setUser]);
+
+  // =========================================================================
+  // 2. HANDLERS & LOGIC
+  // =========================================================================
 
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
   };
 
+  /**
+   * Updates local state upon successful authentication.
+   * Defined BEFORE usage to prevent ReferenceErrors.
+   */
   const finalizeLogin = (res, tId) => {
+    // Auth logic is handled by the service. We just update the UI.
     const { user: userData } = res;
     setUser(userData);
     toast.success(`Secure Connection Established. Welcome, ${userData.name}`, { id: tId });
   };
 
+  /**
+   * Main Login Flow
+   * Targets the 'v3' endpoint which includes the Proxy Detection Middleware.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -65,17 +88,21 @@ const Level3 = ({ user, setUser }) => {
 
     try {
       if (step === 1) {
-        // [FIX] FRONTEND PASSWORD VALIDATION
-        if (formData.password.length < 8) {
-          toast.error('Password must be at least 8 characters.', { id: tId });
+        // [FIX] FRONTEND PASSWORD VALIDATION (CENTRALIZED)
+        const validationError = validateLoginForm(formData.email, formData.password);
+        if (validationError) {
+          toast.error(validationError, { id: tId });
           setIsLoading(false);
           return;
         }
 
+        // ---------------------------------------------------
+        // STEP A: CREDENTIALS (TARGETING V3 ENDPOINT)
+        // ---------------------------------------------------
         const res = await authService.loginModern(
           formData.email.trim(),
           formData.password,
-          'v3',
+          'v3', // <--- Critical: Targets /auth/level3 (Protected Endpoint)
           formData.rememberMe
         );
 
@@ -87,6 +114,9 @@ const Level3 = ({ user, setUser }) => {
           finalizeLogin(res, tId);
         }
       } else {
+        // ---------------------------------------------------
+        // STEP B: MFA VERIFICATION
+        // ---------------------------------------------------
         const res = await authService.verifyMfa({
           email: formData.email.trim(),
           code: formData.code.trim(),
@@ -97,6 +127,7 @@ const Level3 = ({ user, setUser }) => {
         if (res.success) finalizeLogin(res, tId);
       }
     } catch (err) {
+      // If blocked by Lab 3 defense, err.message will contain the specific security warning
       toast.error(err.response?.data?.message || 'Access Denied: Potential Proxy Detected.', { id: tId });
     } finally {
       setIsLoading(false);
@@ -116,6 +147,10 @@ const Level3 = ({ user, setUser }) => {
       navigate('/level3');
     }
   };
+
+  // =========================================================================
+  // 3. UI RENDERING
+  // =========================================================================
 
   if (user) return <Dashboard user={user} setUser={setUser} onLogout={handleLogout} />;
 
@@ -140,6 +175,7 @@ const Level3 = ({ user, setUser }) => {
               onChange={handleChange}
               required
             />
+
             <Checkbox
               label="Stay Persistent (JWT)"
               name="rememberMe"
@@ -159,11 +195,17 @@ const Level3 = ({ user, setUser }) => {
             autoFocus
           />
         )}
+
         <div className="form-actions">
           <Button type="submit" disabled={isLoading} fullWidth>
             {isLoading ? 'ANALYZING...' : (step === 1 ? 'SECURE LOGIN' : 'VERIFY')}
           </Button>
-          <Button type="button" variant="secondary" onClick={() => navigate('/')} fullWidth>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate('/')}
+            fullWidth
+          >
             <FaArrowLeft /> RETURN TO BASE
           </Button>
         </div>

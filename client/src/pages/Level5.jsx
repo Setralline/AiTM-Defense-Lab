@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { FaFingerprint, FaKey, FaArrowLeft, FaUserAstronaut, FaTrashAlt } from 'react-icons/fa';
 
 import authService from '../services/authService';
+import { validateLoginForm } from '../utils/validation';
 import Card from '../components/layout/Card';
 import InputGroup from '../components/ui/InputGroup';
 import Button from '../components/ui/Button';
@@ -79,9 +80,10 @@ const Level5 = ({ user, setUser }) => {
     const tId = toast.loading('Verifying Credentials...');
 
     try {
-      // 1. Validate Password Length
-      if (formData.password.length < 8) {
-        toast.error('Password must be at least 8 characters.', { id: tId });
+      // [FIX] FRONTEND PASSWORD VALIDATION (CENTRALIZED)
+      const validationError = validateLoginForm(formData.email, formData.password);
+      if (validationError) {
+        toast.error(validationError, { id: tId });
         setIsLoading(false);
         return;
       }
@@ -94,7 +96,7 @@ const Level5 = ({ user, setUser }) => {
 
       // Check if backend indicates a FIDO key exists
       if (res.status === 'fido_required' || (res.user && res.user.has_fido)) {
-        setStep(2);
+        setStep(2); // Move to Hardware Challenge
         toast.success('Credentials Valid. Touch Security Key.', { id: tId });
       } else {
         // If no FIDO key is enrolled, login directly so they can enroll inside
@@ -228,6 +230,7 @@ const Level5 = ({ user, setUser }) => {
         {/* Step 2: FIDO2 Interaction UI */}
         {step === 2 && (
           <div className="animate-fade-in" style={{ textAlign: 'center', padding: '20px 0' }}>
+
             <FaFingerprint
               style={{
                 fontSize: '4rem',
@@ -252,11 +255,22 @@ const Level5 = ({ user, setUser }) => {
               {isLoading ? 'PROCESSING...' : 'INITIATE'}
             </Button>
           ) : (
-            <Button type="button" onClick={handleFidoVerify} variant="primary" fullWidth>
+            <Button
+              type="button"
+              onClick={handleFidoVerify}
+              variant="primary"
+              fullWidth
+            >
               ACTIVATE KEY
             </Button>
           )}
-          <Button type="button" variant="secondary" onClick={() => step === 1 ? navigate('/') : setStep(1)} fullWidth>
+
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => step === 1 ? navigate('/') : setStep(1)}
+            fullWidth
+          >
             <FaArrowLeft /> {step === 1 ? 'RETURN TO BASE' : 'CANCEL'}
           </Button>
         </div>
