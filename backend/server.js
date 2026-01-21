@@ -34,7 +34,8 @@ const corsOptions = {
     if (!origin || whitelist.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.warn(`[Security] Blocked CORS request from: ${origin}`);
+      // Changed to Yellow warning for clarity
+      console.warn(`\x1b[33m%s\x1b[0m`, `[Security] Blocked CORS request from: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -63,6 +64,18 @@ app.use(limiter);
 
 app.use('/auth', authRoutes);
 
+/**
+ * [LABS DEFENSE] - Dynamic Security Configuration Endpoint
+ * This endpoint allows the frontend DomainGuard to verify the 
+ * legitimate domain dynamically based on Docker environment variables.
+ */
+app.get('/api/config/security', (req, res) => {
+    res.json({
+        allowedDomain: process.env.ALLOWED_HOSTS?.split(',')[0] || 'localhost',
+        rpId: process.env.RP_ID
+    });
+});
+
 // Health Check Endpoint
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
@@ -74,6 +87,7 @@ const startServer = async () => {
   try {
     // 1. Test Database Connection
     const dbRes = await pool.query('SELECT NOW()');
+    // Using Green color for success
     console.log('\x1b[32m%s\x1b[0m', ` [OK] Database Connected: ${dbRes.rows[0].now}`);
 
     // 2. Initialize Database (Admin Account & Tables)
@@ -81,6 +95,7 @@ const startServer = async () => {
 
     // 3. Start Listening
     app.listen(config.app.port, () => {
+      // Using Cyan for structural info
       console.log('\x1b[36m%s\x1b[0m', `-----------------------------------------------`);
       console.log('\x1b[32m%s\x1b[0m', ` [OK] Server running in ${config.app.env} mode`);
       console.log('\x1b[36m%s\x1b[0m', ` [>>] Listening on Port: ${config.app.port}`);
@@ -88,6 +103,7 @@ const startServer = async () => {
     });
 
   } catch (err) {
+    // Red color for critical failure
     console.error('\x1b[31m%s\x1b[0m', ` [!] CRITICAL: Server startup failed: ${err.message}`);
     process.exit(1);
   }
