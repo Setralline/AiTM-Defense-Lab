@@ -13,6 +13,15 @@ RUN npm ci --omit=dev
 # 5. Copy the rest of the application source code
 COPY . .
 
+# --- [NEW] Security Hardening: Run as Non-Root User ---
+# Create logs directory and assign ownership to the 'node' user
+# Note: The 'node' user comes pre-installed in the node:alpine image
+RUN mkdir -p logs && chown -R node:node /app
+
+# Switch to the non-privileged user
+USER node
+# ------------------------------------------------------
+
 # 6. Expose the port the app runs on
 EXPOSE 5000
 
