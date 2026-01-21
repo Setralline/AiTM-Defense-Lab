@@ -86,10 +86,13 @@ When `server.js` starts, it triggers `config/initDb.js` which automatically:
 2. **Creates Schema:** Automatically creates the `users` table and `token_blacklist` table if they don't exist.
 3. **Seeds Admin:** Injects the default admin account.
 
-**Default Credentials:**
+**⚠️ Admin Credentials:**
 
 * **Email:** `admin@lab.com`
-* **Password:** `lab123`
+* **Password:** **GENERATED ON STARTUP**
+> **Look at your terminal output!** The system generates a unique 16-character secure password every time the database is re-initialized. This ensures maximum security for the lab environment.
+
+
 
 ---
 
@@ -100,31 +103,19 @@ Based on the project file system:
 * **`config/`**:
 * `db.js`: PostgreSQL connection pool configuration.
 * `initDb.js`: Automation script for schema creation and admin seeding.
-
-
 * **`controllers/`**:
 * `authController.js`: General auth logic (Admin login, User management).
 * `level1Controller.js`: Logic for Legacy Auth (Cookie-based).
 * `level2Controller.js`: Logic for Modern Auth (Token-based).
 * `mfaController.js`: Handling TOTP generation and verification.
-
-
 * **`middleware/`**:
 * `checkBlacklist.js`: Interceptor that blocks revoked tokens (Active Defense) and logs incidents.
-
-
 * **`logs/` (Auto-Generated)**:
 * Stores forensic evidence of security events (see details below).
-
-
 * **`routes/`**:
 * `auth.js`: API endpoints definitions.
-
-
 * **`utils/`**:
 * `helpers.js`: Shared utility functions including token generation and revocation logic.
-
-
 
 ---
 

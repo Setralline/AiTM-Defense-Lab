@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const pool = require('./db');
-const crypto = require('crypto'); // [FIX] Import crypto for random password generation
+const crypto = require('crypto');
 
 /**
  * ------------------------------------------------------------------
@@ -107,11 +107,14 @@ const createInitialAdmin = async () => {
 
     await pool.query(createTablesQuery);
 
-    // [FIX] Generate a Random Strong Password (16 characters hex = secure & >8 chars)
-    const adminEmail = 'admin@lab.com';
-    const adminPass = crypto.randomBytes(8).toString('hex'); // e.g., 'a3f1b2c9d8e7f6a0'
+    // [FIX] Generate a Strong Password that satisfies the Regex:
+    // Min 8 chars, 1 Uppercase, 1 Lowercase, 1 Number/Symbol
+    // Strategy: Generate 12 random hex chars, then append a forced complexity string "Ab1!"
+    const randomPart = crypto.randomBytes(6).toString('hex'); // 12 chars (a-f, 0-9)
+    const adminPass = `${randomPart}A1!`; // Forces compliance
     
     const hashedPassword = await bcrypt.hash(adminPass, 10);
+    const adminEmail = 'admin@lab.com';
 
     await pool.query(
       "INSERT INTO users (name, email, password, is_admin) VALUES ($1, $2, $3, $4)",
@@ -121,9 +124,9 @@ const createInitialAdmin = async () => {
     console.log('\x1b[32m%s\x1b[0m', ' [+] SYSTEM: Database schema verified for ALL Labs.');
     console.log('\x1b[33m%s\x1b[0m', ` [+] ADMIN CREDENTIALS GENERATED:`);
     console.log('\x1b[33m%s\x1b[0m', `     Email:    ${adminEmail}`);
-    console.log('\x1b[33m%s\x1b[0m', `     Password: ${adminPass}`); // Prints the one-time password
+    console.log('\x1b[33m%s\x1b[0m', `     Password: ${adminPass}`);
     console.log('\x1b[37m%s\x1b[0m', `     (Copy this password now. It will change on restart.)\n`);
-
+  
   } catch (err) {
     console.error('\x1b[31m%s\x1b[0m', ' [!] CRITICAL ERROR:', err.message);
   }
