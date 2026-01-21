@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./client/src/assets/logo.svg" alt="App Icon" width="120" />
+  <img src="./client/src/assets/logo.svg" alt="Cyber Lab Logo" width="120" />
 </div>
 
 # Phishing Defense Lab (AiTM Research Platform)

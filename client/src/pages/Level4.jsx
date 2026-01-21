@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FaGlobe, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa';
 import authService from '../services/authService';
+import { validateLoginForm } from '../utils/validation';
 
 // UI Components (BEM Architecture)
 import Card from '../components/layout/Card';
@@ -10,7 +11,7 @@ import InputGroup from '../components/ui/InputGroup';
 import Button from '../components/ui/Button';
 import Checkbox from '../components/ui/Checkbox';
 import Dashboard from '../components/features/Dashboard';
-import DomainGuard from '../components/features/DomainGuard'; // <--- The Client-Side Defense
+import DomainGuard from '../components/features/DomainGuard'; 
 
 /**
  * ------------------------------------------------------------------
@@ -88,6 +89,14 @@ const Level4 = ({ user, setUser }) => {
 
     try {
       if (step === 1) {
+        // [FIX] FRONTEND PASSWORD VALIDATION (CENTRALIZED)
+        const validationError = validateLoginForm(formData.email, formData.password);
+        if (validationError) {
+          toast.error(validationError, { id: tId });
+          setIsLoading(false);
+          return;
+        }
+
         // ---------------------------------------------------
         // STEP A: CREDENTIAL EXCHANGE
         // ---------------------------------------------------

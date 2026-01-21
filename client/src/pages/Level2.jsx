@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FaUserAstronaut, FaKey, FaShieldAlt, FaArrowLeft } from 'react-icons/fa';
 import authService from '../services/authService';
+import { validateLoginForm } from '../utils/validation';
 
 // UI Components (BEM Architecture)
 import Card from '../components/layout/Card';
@@ -87,6 +88,14 @@ const Level2 = ({ user, setUser }) => {
 
     try {
       if (step === 1) {
+        // [FIX] FRONTEND PASSWORD VALIDATION (CENTRALIZED)
+        const validationError = validateLoginForm(formData.email, formData.password);
+        if (validationError) {
+          toast.error(validationError, { id: tId });
+          setIsLoading(false);
+          return;
+        }
+
         // ---------------------------------------------------
         // STEP A: INITIAL CREDENTIAL EXCHANGE
         // ---------------------------------------------------

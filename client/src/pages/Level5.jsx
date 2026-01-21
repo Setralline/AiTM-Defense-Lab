@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { FaFingerprint, FaKey, FaArrowLeft, FaUserAstronaut, FaTrashAlt } from 'react-icons/fa';
 
 import authService from '../services/authService';
+import { validateLoginForm } from '../utils/validation';
 import Card from '../components/layout/Card';
 import InputGroup from '../components/ui/InputGroup';
 import Button from '../components/ui/Button';
@@ -79,6 +80,14 @@ const Level5 = ({ user, setUser }) => {
     const tId = toast.loading('Verifying Credentials...');
 
     try {
+      // [FIX] FRONTEND PASSWORD VALIDATION (CENTRALIZED)
+      const validationError = validateLoginForm(formData.email, formData.password);
+      if (validationError) {
+        toast.error(validationError, { id: tId });
+        setIsLoading(false);
+        return;
+      }
+
       const res = await authService.fidoLoginWithPassword(
         formData.email.trim(),
         formData.password,
@@ -162,8 +171,12 @@ const Level5 = ({ user, setUser }) => {
   // 4. UI RENDERING
   // =========================================================================
 
-  if (user) return (
-    <Dashboard user={user} setUser={setUser} onLogout={handleLogout}>
+  // [FIX] Force-mask MFA status specifically for the Level 5 Dashboard view
+  const displayUser = user ? { ...user, mfa_secret: null } : null;
+
+  if (displayUser) return (
+    // [FIX] Added isFidoMode={true} to hide legacy buttons
+    <Dashboard user={displayUser} setUser={setUser} onLogout={handleLogout} isFidoMode={true}>
       <div className="info-panel" style={{ marginTop: '20px' }}>
         <div className="info-panel__row">
           <FaFingerprint className="info-panel__icon" />
@@ -173,7 +186,7 @@ const Level5 = ({ user, setUser }) => {
           Manage your WebAuthn/FIDO2 authenticators.
         </p>
 
-        {user.has_fido ? (
+        {displayUser.has_fido ? (
           <Button onClick={handleDisableKey} variant="danger" fullWidth>
             <FaTrashAlt /> DISABLE FIDO KEY
           </Button>

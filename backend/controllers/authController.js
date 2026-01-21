@@ -120,6 +120,13 @@ exports.createUser = async (req, res) => {
   try {
     const { name, email, password, isAdmin } = req.body;
 
+    // [FIX] Password Complexity Check
+    if (!password || password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
+    }
+    // Optional: Add regex for numbers/special chars if you want stricter rules
+    // if (!/[0-9]/.test(password)) return res.status(400).json({ message: 'Password must contain a number.' });
+
     // 1. Hash the password before storage
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
