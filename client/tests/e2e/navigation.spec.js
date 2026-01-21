@@ -21,10 +21,11 @@ test.describe('Phishing Lab UI Navigation & Integrity', () => {
    * Verifies the landing page loads the correct thesis branding.
    */
   test('Home Page - should display Mission Control', async ({ page }) => {
-    await expect(page).toHaveTitle(/Phishing/i);
+    // [FIX] Expect the new App Name "Cyber Lab"
+    await expect(page).toHaveTitle(/Cyber Lab/i);
     await expect(page.getByText('SELECT MISSION')).toBeVisible();
     
-    // [UPDATED] Check for the new Admin Panel button instead of the brittle footer text
+    // [UPDATED] Check for the new Admin Panel button
     await expect(page.getByText('ADMIN PANEL')).toBeVisible(); 
   });
 
