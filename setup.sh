@@ -21,7 +21,7 @@ if [[ "$OS_TYPE" == "windows" ]]; then
 fi
 
 echo -e "${GREEN}------------------------------------------------------------${NC}"
-echo -e "${GREEN}   🚀 PHISHING DEFENSE LAB - AUTO INITIALIZER ($OS_TYPE)${NC}"
+echo -e "${GREEN}   PHISHING DEFENSE LAB - AUTO INITIALIZER ($OS_TYPE)${NC}"
 echo -e "${GREEN}------------------------------------------------------------${NC}"
 
 # 1. Select Environment Mode
@@ -30,11 +30,19 @@ echo "1) Local Development (localhost)"
 echo "2) Production (AWS/VPS with SSL)"
 read -p "Selection [1-2]: " MODE_CHOICE
 
+# Initialize FIDO2 Defaults for Local
+RP_ID_VAL="localhost"
+EXPECTED_ORIGINS_VAL="http://localhost,http://localhost:5173"
+
 if [[ "$MODE_CHOICE" == "2" ]]; then
     ENV_MODE="production"
-    read -p "Enter your domain name: " DOMAIN
+    read -p "Enter your domain name (e.g., thesis-lab.com): " DOMAIN
     if [ -z "$DOMAIN" ]; then echo -e "${RED}Domain required!${NC}"; exit 1; fi
     PROTOCOL="https"
+    
+    # [FIX] Production FIDO Settings
+    RP_ID_VAL="$DOMAIN"
+    EXPECTED_ORIGINS_VAL="https://$DOMAIN"
 else
     ENV_MODE="local"
     DOMAIN="localhost"
@@ -65,6 +73,10 @@ JWT_SECRET=$JWT_SECRET
 NODE_ENV=$ENV_MODE
 DOMAIN=$DOMAIN
 CORS_ORIGIN=$PROTOCOL://$DOMAIN
+
+# [FIX] FIDO2 Critical Configuration
+RP_ID=$RP_ID_VAL
+EXPECTED_ORIGINS=$EXPECTED_ORIGINS_VAL
 EOF
 
 # 4. Configure Nginx
@@ -94,6 +106,9 @@ server {
     location /auth/ {
         proxy_pass http://backend:5000;
         proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 }
 EOF
@@ -110,6 +125,9 @@ server {
     location /auth/ {
         proxy_pass http://backend:5000;
         proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 }
 EOF
@@ -123,4 +141,5 @@ $SUDO_CMD docker-compose up --build -d
 echo -e "${GREEN}------------------------------------------------------------${NC}"
 echo -e "${GREEN}[DONE] LAB IS READY!${NC}"
 echo -e "URL: $PROTOCOL://$DOMAIN"
+echo -e "Mode: $ENV_MODE"
 echo -e "${GREEN}------------------------------------------------------------${NC}"
