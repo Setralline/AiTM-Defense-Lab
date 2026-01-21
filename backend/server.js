@@ -3,11 +3,11 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const config = require('./config/env'); 
+const config = require('./config/env');
 
 const authRoutes = require('./routes/auth');
 const pool = require('./config/db');
-const { createInitialAdmin } = require('./config/initDb'); 
+const { createInitialAdmin } = require('./config/initDb');
 
 const app = express();
 
@@ -20,13 +20,13 @@ app.use(helmet());
 
 // 2. Cross-Origin Resource Sharing (CORS) Configuration
 // Now relies on the unified 'config.app.origin' from env.js
-const whitelist = config.app.env === 'production' 
-  ? [config.app.origin] 
+const whitelist = config.app.env === 'production'
+  ? [config.app.origin]
   : [
-      'http://localhost:5173',      // Vite Dev
-      'http://127.0.0.1:5173',      // IP Dev
-      config.app.origin             // Docker/Custom Origin
-    ];
+    'http://localhost:5173',      // Vite Dev
+    'http://127.0.0.1:5173',      // IP Dev
+    config.app.origin             // Docker/Custom Origin
+  ];
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -46,7 +46,7 @@ app.use(cors(corsOptions));
 
 // 3. Body Parsers & Cookie Middleware
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json({ limit: '10kb' }));        
+app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 
 // 4. Global Rate Limiter - Prevents Brute Force attacks
@@ -74,17 +74,17 @@ const startServer = async () => {
   try {
     // 1. Test Database Connection
     const dbRes = await pool.query('SELECT NOW()');
-    console.log(`✅ Database Connected: ${dbRes.rows[0].now}`);
+    console.log('\x1b[32m%s\x1b[0m', ` [OK] Database Connected: ${dbRes.rows[0].now}`);
 
     // 2. Initialize Database (Admin Account & Tables)
     await createInitialAdmin();
 
     // 3. Start Listening
     app.listen(config.app.port, () => {
-      console.log(`-----------------------------------------------`);
-      console.log(`🚀 Server running in ${config.app.env} mode`);
-      console.log(`🔗 Listening on Port: ${config.app.port}`);
-      console.log(`-----------------------------------------------`);
+      console.log('\x1b[36m%s\x1b[0m', `-----------------------------------------------`);
+      console.log('\x1b[32m%s\x1b[0m', ` [OK] Server running in ${config.app.env} mode`);
+      console.log('\x1b[36m%s\x1b[0m', ` [>>] Listening on Port: ${config.app.port}`);
+      console.log('\x1b[36m%s\x1b[0m', `-----------------------------------------------`);
     });
 
   } catch (err) {
