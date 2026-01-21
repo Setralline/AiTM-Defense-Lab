@@ -88,7 +88,7 @@ const startServer = async () => {
     });
 
   } catch (err) {
-    console.error('❌ CRITICAL: Server startup failed:', err.message);
+    console.error('\x1b[31m%s\x1b[0m', ` [!] CRITICAL: Server startup failed: ${err.message}`);
     process.exit(1);
   }
 };
