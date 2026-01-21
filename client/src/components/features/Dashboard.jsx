@@ -1,6 +1,6 @@
 import React from 'react';
 import toast from 'react-hot-toast';
-import { FaUserSecret, FaEnvelope, FaFingerprint, FaQrcode, FaPowerOff, FaLock, FaUnlock } from 'react-icons/fa';
+import { FaUserSecret, FaEnvelope, FaFingerprint, FaQrcode, FaPowerOff, FaLock, FaUnlock, FaShieldAlt } from 'react-icons/fa';
 import useMFA from '../../hooks/useMFA';
 import Card from '../layout/Card';
 import Button from '../ui/Button';
@@ -9,11 +9,15 @@ import authService from '../../services/authService';
 /**
  * Dashboard Component
  * Logic: Shared user interface for authenticated operatives.
- * Feature: Supports injection for Level 5 (FIDO) specific controls.
+ * Feature: Supports 'isFidoMode' to override legacy MFA controls for Level 5.
  */
-const Dashboard = ({ user, setUser, onLogout, children }) => {
+const Dashboard = ({ user, setUser, onLogout, children, isFidoMode = false }) => {
   const { isMfaEnabled, qrCode, setQrCode, enableMFA, disableMFA, loading } = useMFA(user, setUser);
 
+  // Determine Security State
+  // If FIDO Mode is active, we are ALWAYS secure. Otherwise, check MFA status.
+  const isSecure = isFidoMode || isMfaEnabled;
+  
   const handleLogout = async () => {
     const tId = toast.loading('Initiating termination sequence...');
     try {
@@ -28,8 +32,12 @@ const Dashboard = ({ user, setUser, onLogout, children }) => {
   return (
     <Card title="OPERATIVE TERMINAL" footer="SECURE COMMUNICATION CHANNEL">
       <div className="info-panel">
-        <div className={`clearance-badge ${isMfaEnabled ? 'clearance-badge--secure' : 'clearance-badge--restricted'}`}>
-          {isMfaEnabled ? 'LEVEL 5 CLEARANCE' : 'RESTRICTED ACCESS'}
+        {/* [FIX] Dynamic Badge Logic */}
+        <div className={`clearance-badge ${isSecure ? 'clearance-badge--secure' : 'clearance-badge--restricted'}`}>
+          {isFidoMode 
+            ? 'FIDO2 HARDWARE VERIFIED' 
+            : (isMfaEnabled ? 'LEVEL 5 CLEARANCE' : 'RESTRICTED ACCESS')
+          }
         </div>
 
         <div className="info-panel__row">
@@ -44,14 +52,14 @@ const Dashboard = ({ user, setUser, onLogout, children }) => {
 
         <div className="info-panel__row">
           <span className="info-panel__icon"><FaFingerprint /></span>
-          <span className={`info-panel__status ${isMfaEnabled ? 'info-panel__status--secure' : 'info-panel__status--warning'}`}>
-            {isMfaEnabled ? 'ENCRYPTED' : 'UNPROTECTED'} 
-            {isMfaEnabled ? <FaLock className="status-icon"/> : <FaUnlock className="status-icon"/>}
+          <span className={`info-panel__status ${isSecure ? 'info-panel__status--secure' : 'info-panel__status--warning'}`}>
+            {isFidoMode ? 'HARDWARE BOUND' : (isMfaEnabled ? 'ENCRYPTED' : 'UNPROTECTED')} 
+            {isSecure ? <FaLock className="status-icon"/> : <FaUnlock className="status-icon"/>}
           </span>
         </div>
       </div>
 
-      {qrCode && (
+      {qrCode && !isFidoMode && (
         <div className="qr-container animate-fade-in">
           <p className="qr-container__label">SCAN WITH AUTHENTICATOR</p>
           <img src={qrCode} alt="MFA" className="qr-container__img" />
@@ -67,15 +75,19 @@ const Dashboard = ({ user, setUser, onLogout, children }) => {
       </div>
 
       <div className="form-actions--vertical" style={{ marginTop: '20px' }}>
-        <Button 
-          onClick={isMfaEnabled ? disableMFA : enableMFA} 
-          variant={isMfaEnabled ? "danger" : "primary"} 
-          disabled={loading}
-          fullWidth
-        >
-          {isMfaEnabled ? <FaUnlock /> : <FaQrcode />} 
-          {loading ? 'PROCESSING...' : (isMfaEnabled ? 'DEACTIVATE MFA' : 'ACTIVATE MFA')}
-        </Button>
+        
+        {/* [FIX] HIDE Legacy MFA Button if in FIDO Mode */}
+        {!isFidoMode && (
+          <Button 
+            onClick={isMfaEnabled ? disableMFA : enableMFA} 
+            variant={isMfaEnabled ? "danger" : "primary"} 
+            disabled={loading}
+            fullWidth
+          >
+            {isMfaEnabled ? <FaUnlock /> : <FaQrcode />} 
+            {loading ? 'PROCESSING...' : (isMfaEnabled ? 'DEACTIVATE MFA' : 'ACTIVATE MFA')}
+          </Button>
+        )}
         
         <Button onClick={handleLogout} variant="secondary" fullWidth>
           <FaPowerOff /> TERMINATE SESSION
