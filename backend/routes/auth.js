@@ -4,6 +4,7 @@ const router = express.Router();
 // =========================================================================
 // Middleware Imports
 // =========================================================================
+const { validateLogin } = require('../middleware/validate');
 
 // Security middleware to intercept and block revoked tokens
 const checkBlacklist = require('../middleware/checkBlacklist');
@@ -45,32 +46,32 @@ router.post('/logout', level1Controller.logout);
 
 /**
  * Tier 1: Legacy Cookie-Based Authentication
- * Vulnerable to CSRF/XSS if not properly secured (demonstration purpose).
+ * [UPDATED] Added validateLogin middleware
  */
-router.post('/level1', level1Controller.loginLevel1);
+router.post('/level1', validateLogin, level1Controller.loginLevel1);
 
 /**
  * Tier 2: Modern JWT-Based Authentication
  * Returns a JSON payload for client-side storage (LocalStorage).
  * Also serves as the base for Tier 4 (Client-Side Defense).
  */
-router.post('/level2', level2Controller.loginLevel2);
+router.post('/level2', validateLogin, level2Controller.loginLevel2);
 
 /**
  * Tier 3: Server-Side Defense (Header Analysis)
  * Wraps the standard JWT login with the `detectProxy` middleware 
  * to block requests from unauthorized origins/proxies.
  */
-router.post('/level3', detectProxy, level2Controller.loginLevel2);
+router.post('/level3', detectProxy, validateLogin, level2Controller.loginLevel2);
 
 // =========================================================================
 // 3. FIDO2 / WebAuthn Routes (Tier 5 Defense)
 // =========================================================================
 
 // Step 1: Initial Password Verification (Before FIDO Challenge)
-router.post('/fido/login-pwd', fidoController.loginWithPassword);
+router.post('/fido/login-pwd', validateLogin, fidoController.loginWithPassword);
 
-// Registration Ceremony (Enrollment)
+// FIDO Registration & Login Steps (No password validation needed here)
 router.post('/fido/register/start', fidoController.registerStart);
 router.post('/fido/register/finish', fidoController.registerFinish);
 
@@ -102,7 +103,9 @@ router.post('/mfa/disable', checkBlacklist, mfaController.disableMFA);
  * Admin Panel Routes
  * Restricted endpoints for user management.
  */
-router.post('/admin/login', authController.adminLogin);
+router.post('/admin/login', validateLogin, authController.adminLogin);
+
+// Protected Admin Actions
 router.get('/admin/users', checkBlacklist, authController.listUsers);
 router.post('/admin/users', checkBlacklist, authController.createUser);
 router.delete('/admin/users/:id', checkBlacklist, authController.deleteUser);
