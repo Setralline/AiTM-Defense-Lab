@@ -1,4 +1,3 @@
-// client/src/components/features/DomainGuard.jsx
 import { useEffect } from 'react';
 
 const DomainGuard = ({ onVerified }) => {
