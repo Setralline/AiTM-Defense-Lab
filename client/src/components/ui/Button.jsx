@@ -1,21 +1,17 @@
 import React from 'react';
 
-/**
- * Button Component (BEM)
- * Uses .btn block with modifiers --primary, --secondary, --danger, --full.
- */
 const Button = ({ 
   children, 
   onClick, 
   variant = 'primary', 
   type = 'button', 
-  disabled, 
+  disabled = false, 
   fullWidth = false,
-  className = ''
+  className = '',
+  style = {} // Added style prop support for custom overrides like Gold button
 }) => {
-  // Construct BEM class string
   const baseClass = 'btn';
-  const variantClass = `btn--${variant}`; // btn--primary, btn--danger
+  const variantClass = `btn--${variant}`;
   const widthClass = fullWidth ? 'btn--full' : '';
   
   return (
@@ -24,6 +20,7 @@ const Button = ({
       onClick={disabled ? null : onClick} 
       disabled={disabled}
       className={`${baseClass} ${variantClass} ${widthClass} ${className}`.trim()}
+      style={style}
     >
       {children}
     </button>

@@ -2,19 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import authService from '../services/authService';
-
-// UI Components
 import Card from '../components/layout/Card';
 import InputGroup from '../components/ui/InputGroup';
 import Button from '../components/ui/Button';
 import Checkbox from '../components/ui/Checkbox';
 import { FaTrash, FaUserShield, FaEnvelope, FaKey, FaArrowLeft, FaLock, FaUsersCog } from 'react-icons/fa';
 
-/**
- * AdminPanel Component
- * Logic: Manages directory services and account provisioning.
- * Style: Strict BEM implementation via main.css.
- */
 const AdminPanel = () => {
   const navigate = useNavigate();
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => sessionStorage.getItem('lab_admin_session') === 'active');
@@ -98,6 +91,7 @@ const AdminPanel = () => {
   return (
     <div className="admin-panel animate-fade-in">
       <div className="admin-toolbar">
+        {/* These buttons will now share space equally and look clean */}
         <Button variant="secondary" onClick={() => navigate('/')}><FaArrowLeft /> BASE</Button>
         <Button variant="danger" onClick={handleLockPanel}><FaLock /> LOCK PANEL</Button>
       </div>
@@ -123,6 +117,7 @@ const AdminPanel = () => {
                   </h4>
                   <span className="user-item__email">{u.email}</span>
                 </div>
+                {/* Trash button now uses the correct icon-only class */}
                 <Button onClick={() => handleDeleteOperative(u.id)} variant="danger" className="btn--icon-only">
                   <FaTrash size={12} />
                 </Button>
