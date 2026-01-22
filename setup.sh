@@ -98,12 +98,24 @@ server {
     server_name $DOMAIN;
     ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    
     location / {
         root /usr/share/nginx/html;
         index index.html index.htm;
         try_files \$uri \$uri/ /index.html;
     }
+    
+    # [FIX] Proxy Auth Routes
     location /auth/ {
+        proxy_pass http://backend:5000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    # [FIX] Proxy Security API (DomainGuard)
+    location /api/ {
         proxy_pass http://backend:5000;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -117,12 +129,24 @@ else
     cat <<EOF > client/nginx.conf
 server {
     listen 80;
+    
     location / {
         root /usr/share/nginx/html;
         index index.html index.htm;
         try_files \$uri \$uri/ /index.html;
     }
+    
+    # [FIX] Proxy Auth Routes
     location /auth/ {
+        proxy_pass http://backend:5000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    # [FIX] Proxy Security API (DomainGuard)
+    location /api/ {
         proxy_pass http://backend:5000;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -135,6 +159,9 @@ fi
 
 # 5. Launch Docker
 echo -e "${YELLOW}[Step 5] Launching Containers...${NC}"
+mkdir -p backend/logs
+chmod 777 backend/logs 2>/dev/null
+
 $SUDO_CMD docker-compose down -v 2>/dev/null
 $SUDO_CMD docker-compose up --build -d
 

@@ -1,22 +1,40 @@
 const config = require('../config/env');
 
 /**
- * Lab 3 Defense: Header Analysis & Proxy Detection
- * Blocks requests if the Host header doesn't match the allowed domains defined in config.
- * Mitigates Host Header Injection and some AiTM scenarios.
+ * Lab 3: Server-Side Defense (Dynamic)
+ * Uses environment variables from env.js to validate hosts.
  */
 const detectProxy = (req, res, next) => {
-    const hostHeader = req.headers['host'];
+    // 1. Extract Host Information
+    const rawHost = req.headers['x-forwarded-host'] || req.headers.host || '';
+    const clientHost = rawHost.split(':')[0]; // Remove port if present
 
-    // Use allowed hosts from config, fallback to localhost defaults if missing
-    const allowedHosts = config.security.allowedHosts || ['localhost:5000', '127.0.0.1:5000'];
+    // 2. DEFENSE LAYER 1: Fingerprint Detection (Anti-Evilginx)
+    if (req.headers['x-evilginx']) {
+        console.error(`[SECURITY] Evilginx signature detected from: ${clientHost}`);
+        return res.status(403).json({ 
+            message: "Security Alert: Malicious Proxy Fingerprint Detected." 
+        });
+    }
 
-    // Check if the incoming Host header is in our allowlist
-    if (!allowedHosts.includes(hostHeader)) {
-        console.warn(`[Security] 🚨 Blocked Suspicious Host Header: ${hostHeader}`);
+    // 3. DEFENSE LAYER 2: Host Whitelisting (Dynamic)
+    // Pulls the allowed list directly from config/env.js
+    const allowedHosts = config.security.allowedHosts || [];
+
+    // Validation Logic:
+    // Check if clientHost matches any host in the allowed list (stripping ports from config if needed)
+    const isAuthorized = allowedHosts.some(host => {
+        const cleanHost = host.split(':')[0]; // Handle cases like 'localhost:5000' in config
+        return clientHost === cleanHost || clientHost.endsWith(`.${cleanHost}`);
+    });
+
+    if (!isAuthorized) {
+        console.warn(`[SECURITY] Blocked unauthorized host: ${clientHost}`);
+        // Debug log to help you verify what is in the env list
+        console.debug(`[DEBUG] Allowed Targets: ${JSON.stringify(allowedHosts)}`);
+        
         return res.status(403).json({
-            error: "Security Violation",
-            message: "Access Denied: Origin mismatch detected (Host Header Defense)."
+            message: "Access Denied: Domain not authorized."
         });
     }
 

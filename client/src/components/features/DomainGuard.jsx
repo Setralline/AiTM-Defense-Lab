@@ -1,51 +1,89 @@
 import { useEffect } from 'react';
 
-/**
- * DomainGuard Component - Dynamic Lab Defense
- * Fetches the authorized domain from the backend and kills the page if a mismatch is detected.
- */
-const DomainGuard = () => {
+const DomainGuard = ({ onVerified }) => {
   useEffect(() => {
-    const verifyIntegrity = async () => {
+    const checkDomainIntegrity = async () => {
       try {
-        // 1. Fetch the official configuration from the backend (Dynamic from Docker)
-        const response = await fetch('/api/config/security');
+        // Styled Init Log
+        console.log("%c [Shield] Initializing DomainGuard Sequence...", "color: cyan; font-weight: bold; font-size: 12px;");
+
+        // 1. Get Browser Reality
+        const currentBaseURI = document.baseURI; 
+        const currentURL = new URL(currentBaseURI);
+        const currentHostname = currentURL.hostname;
+
+        // 2. Fetch Config with Anti-Cache & Anti-Tamper Logic
+        const response = await fetch(`/api/config/security?t=${Date.now()}`);
+        if (!response.ok) throw new Error(`Security Config Unreachable: ${response.status}`);
+        
         const config = await response.json();
         
-        const authorizedDomain = config.allowedDomain;
-        const currentHostname = window.location.hostname;
-
-        // 2. Define local safety bypass for development
-        const isLocal = currentHostname === "localhost" || currentHostname === "127.0.0.1";
-
-        // 3. Security Check: If not local and hostname doesn't match the backend's allowedDomain
-        if (!isLocal && currentHostname !== authorizedDomain) {
-          
-          // CRITICAL: Halt all network activity and script execution
-          window.stop(); 
-          
-          // CRITICAL: Clear the entire DOM (Head and Body) to leave a blank white page
-          document.documentElement.innerHTML = ""; 
-          
-          // Overwrite with clean blank content to neutralize the proxy
-          document.write("<html><body style='background:white;'></body></html>");
-
-          console.error("SECURITY ALERT: Domain mismatch. Execution halted.");
-          
-          // Throw error to break the React component lifecycle
-          throw new Error("Security Kill Switch Activated");
+        // 3. Decode the Truth (Base64)
+        let allowedDomain = config.allowedDomain;
+        if (config.encoding === 'base64') {
+            try {
+                allowedDomain = atob(config.allowedDomain);
+            } catch (e) {
+                console.error("%c[Shield] Failed to decode config integrity.", "color: red; font-weight: bold;");
+                return; // Fail safe
+            }
         }
+
+        // ---------------- DIAGNOSTICS ----------------
+        // Styles for the table-like output
+        const labelStyle = "color: #3498db; font-weight: bold; padding-right: 10px;"; // Blue
+        const valueStyle = "color: #f1c40f; font-weight: bold;"; // Yellow
+        const dividerStyle = "color: #7f8c8d; font-weight: bold;"; // Grey
+
+        console.log("%c------------------------------------------------", dividerStyle);
+        console.log(`%c Browser Host:      %c${currentHostname}`, labelStyle, valueStyle);
+        console.log(`%c Authorized (Dec):  %c${allowedDomain}`, labelStyle, valueStyle);
+        console.log(`%c Received (Raw):    %c${config.allowedDomain}`, labelStyle, valueStyle);
+        console.log("%c------------------------------------------------", dividerStyle);
+        // ---------------------------------------------
+
+        // 4. Verification Logic
+        const isLocal = currentHostname === 'localhost' || currentHostname === '127.0.0.1';
+        const isSecure = allowedDomain && (
+            currentHostname === allowedDomain || 
+            currentHostname.endsWith(`.${allowedDomain}`)
+        );
+
+        // 5. Action
+        if (!isLocal && !isSecure) {
+          // Critical Red Alert with large font
+          console.error(
+              `%c[CRITICAL] Phishing Detected! '${currentHostname}' != '${allowedDomain}'`, 
+              "color: #e74c3c; font-weight: 900; font-size: 16px; background: #fff0f0; padding: 5px; border: 1px solid red;"
+          );
+          
+          window.stop();
+          document.body.innerHTML = '';
+          window.location.href = 'about:blank';
+          return;
+        }
+
+        console.log("%c [Shield] Integrity Verified.", "color: #2ecc71; font-weight: bold; font-size: 12px;");
+        if (onVerified) onVerified();
+
       } catch (err) {
-        // Silent fail or log internal error
-        console.warn("Domain integrity check bypassed or failed to initialize.");
+        console.error(`%c[Shield] Verification Error: ${err.message}`, "color: red; font-weight: bold;");
+        
+        // Fail-safe logic...
+        if (!window.location.hostname.includes('thesis-osamah-lab.live') && 
+            !window.location.hostname.includes('localhost')) {
+            document.body.innerHTML = '';
+            window.stop();
+        } else {
+             if (onVerified) onVerified();
+        }
       }
     };
 
-    verifyIntegrity();
-  }, []);
+    checkDomainIntegrity();
+  }, [onVerified]);
 
-  // This component is invisible; it only monitors domain integrity
-  return null; 
+  return null;
 };
 
 export default DomainGuard;

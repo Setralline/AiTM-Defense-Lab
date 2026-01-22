@@ -41,12 +41,12 @@ The lab is divided into 5 distinct levels, each representing a specific paradigm
 ### Defended Scenarios
 
 * **Level 3: Server-Side Defense (Header Analysis)**
-    * **Mechanism**: The backend inspects HTTP headers such as `Host`, `X-Forwarded-For`, and `X-Real-IP`.
+    * **Mechanism**: The backend inspects HTTP headers such as `Host`, `X-Forwarded-Host`, and `X-Evilginx` signatures.
     * **Defense**: Detects inconsistencies typical of Reverse Proxies (e.g., mismatched Host headers) and blocks the connection before authentication completes.
 
 * **Level 4: Client-Side Defense (Domain Guard)**
-    * **Mechanism**: Active JavaScript protection running in the browser's Document Object Model (DOM).
-    * **Defense**: Checks `window.location.hostname` against a strict whitelist. If a mismatch is found (indicating a phishing domain), the page halts execution to prevent credential entry.
+    * **Mechanism**: Active JavaScript protection that fetches a **Base64-obfuscated** configuration from the server.
+    * **Defense**: Uses **Anti-Mirroring** logic. The client decodes the authorized origin (`atob`) and validates it against `window.location.hostname`. If a mismatch is found (indicating Evilginx is proxying the site), the page halts execution to prevent credential entry.
 
 ### Immune Scenario
 
@@ -96,7 +96,7 @@ docker run -p 80:80 phishing-lab-client
 
 ---
 
-## 🧪 Running Tests
+## Running Tests
 
 The frontend includes a comprehensive testing suite combining **Vitest** for unit testing and **Playwright** for end-to-end (E2E) verification.
 
@@ -165,4 +165,3 @@ While the current implementation covers core AiTM defense mechanisms, future exp
 ---
 
 **Note**: This tool is developed strictly for **educational and research purposes**. It is designed to demonstrate how to *defend* against attacks, not how to conduct them.
-
