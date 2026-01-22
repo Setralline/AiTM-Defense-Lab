@@ -73,7 +73,7 @@ async function runLevel1SecurityTest() {
     } catch (err) {
       if (err.response && err.response.status === 401) {
         // 401 Unauthorized is the EXPECTED result
-        console.log('\x1b[32m[PASSED]\x1b[0m ✅ Attack Blocked! Server returned 401 Unauthorized.');
+        console.log('\x1b[32m[PASSED]\x1b[0m Attack Blocked! Server returned 401 Unauthorized.');
         console.log('\x1b[33m[INFO]\x1b[0m Middleware "checkBlacklist" correctly identified the revoked session.');
       } else {
         console.log(`\x1b[31m[ERROR]\x1b[0m Unexpected Status Code: ${err.response?.status}`);

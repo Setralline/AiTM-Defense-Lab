@@ -13,7 +13,7 @@ import { FaTrash, FaUserShield, FaEnvelope, FaKey, FaArrowLeft, FaLock, FaUsersC
 /**
  * AdminPanel Component
  * Logic: Manages directory services and account provisioning.
- * Style: Strict BEM implementation.
+ * Style: Strict BEM implementation via main.css.
  */
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -78,7 +78,10 @@ const AdminPanel = () => {
   const handleLockPanel = () => {
     sessionStorage.removeItem('lab_admin_session');
     setIsAdminLoggedIn(false);
-    toast('Terminal Locked.', { icon: '🔒' });
+    
+    // [FIX] Use Vector Icon instead of Emoji
+    toast('Terminal Locked.', { icon: <FaLock /> });
+    
     navigate('/');
   };
 
@@ -99,6 +102,7 @@ const AdminPanel = () => {
     <div className="admin-panel animate-fade-in">
       <div className="admin-toolbar">
         <Button variant="secondary" onClick={() => navigate('/')}><FaArrowLeft /> BASE</Button>
+        {/* [FIX] This button now has a Red Hover effect via CSS */}
         <Button variant="danger" onClick={handleLockPanel}><FaLock /> LOCK PANEL</Button>
       </div>
 
@@ -123,6 +127,7 @@ const AdminPanel = () => {
                   </h4>
                   <span className="user-item__email">{u.email}</span>
                 </div>
+                {/* [FIX] Icon-only button support */}
                 <Button onClick={() => handleDeleteOperative(u.id)} variant="danger" className="btn--icon-only">
                   <FaTrash size={12} />
                 </Button>
