@@ -2,51 +2,86 @@ import { useEffect } from 'react';
 
 const DomainGuard = ({ onVerified }) => {
   useEffect(() => {
-    const verifyIntegrity = async () => {
+    const checkDomainIntegrity = async () => {
       try {
-        // 1. Fetch Dynamic Config from Backend
+        console.log("%c [Shield] Initializing DomainGuard Sequence...", "color: cyan");
+
+        // 1. Get the "Real" Location from the Browser
+        // We use document.baseURI as requested to get the full context
+        const currentBaseURI = document.baseURI; 
+        const currentURL = new URL(currentBaseURI);
+        const currentHostname = currentURL.hostname;
+
+        // 2. Fetch the Authorized Configuration from Backend
         const response = await fetch('/api/config/security');
-        if (!response.ok) throw new Error('Failed to fetch security config');
+        if (!response.ok) {
+            throw new Error(`Security Config Unreachable (Status: ${response.status})`);
+        }
         
         const config = await response.json();
-        const authorizedDomain = config.allowedDomain; // Comes from env.js -> RP_ID
+        const allowedDomain = config.allowedDomain; // e.g., "thesis-osamah-lab.live"
 
-        const currentHostname = window.location.hostname;
+        // ---------------- DIAGNOSTICS (Check Console) ----------------
+        console.log("------------------------------------------------");
+        console.log("🔎 DOMAIN INTEGRITY CHECK");
+        console.log(`📍 Browser BaseURI:   ${currentBaseURI}`);
+        console.log(`🏠 Detected Host:     ${currentHostname}`);
+        console.log(`🔐 Authorized Host:   ${allowedDomain}`);
+        console.log("------------------------------------------------");
+        // -------------------------------------------------------------
 
-        // 2. Localhost Bypass (Strict)
+        // 3. The Comparison Logic
+        // Allow Localhost for testing
         const isLocal = currentHostname === 'localhost' || currentHostname === '127.0.0.1';
 
-        // 3. Production Check (Dynamic)
-        // Matches exact domain or subdomains (e.g. www.thesis...)
-        const isMatch = authorizedDomain && (
-            currentHostname === authorizedDomain || 
-            currentHostname.endsWith(`.${authorizedDomain}`)
+        // Strict Check: Does the current host match the allowed domain?
+        // We use .endsWith to allow subdomains like 'www.'
+        const isSecure = allowedDomain && (
+            currentHostname === allowedDomain || 
+            currentHostname.endsWith(`.${allowedDomain}`)
         );
 
-        // 4. Security Decision
-        if (!isLocal && !isMatch) {
-          console.error(`[DomainGuard] Security Alert: ${currentHostname} is not authorized!`);
+        // 4. IMMEDIATE ACTION
+        if (!isLocal && !isSecure) {
+          console.error(`[CRITICAL] Phishing Detected! Origin '${currentHostname}' does not match '${allowedDomain}'`);
           
-          // Kill Switch
+          // A. Kill the Page Execution
           window.stop();
-          document.documentElement.innerHTML = "";
+          
+          // B. Wipe the DOM (Show Blank)
+          document.body.innerHTML = '';
+          document.head.innerHTML = '';
+          
+          // C. Force Redirect (Optional: trap the user)
+          window.location.href = 'about:blank';
           return;
         }
 
-        // Success
+        // 5. Success
+        console.log("%c [Shield] Integrity Verified. Access Granted.", "color: green");
         if (onVerified) onVerified();
 
       } catch (err) {
-        console.warn("[DomainGuard] Config check failed. Check API connectivity.");
-        // Optional: Fail open or closed depending on desired strictness
-        // For now, we allow it to proceed if API fails to avoid locking out legitimate users on bad connections
-        if (onVerified) onVerified();
+        // Fail-Safe: If we can't verify, we MUST assume we are under attack unless on localhost
+        console.error("[Shield] Verification Error:", err);
+        
+        // Strict Fallback: Check if we are clearly on the known legitimate domain
+        // This handles cases where API might fail but domain is correct
+        if (!window.location.hostname.includes('thesis-osamah-lab.live') && 
+            !window.location.hostname.includes('localhost')) {
+            document.body.innerHTML = '<h1>Security Check Failed</h1>';
+            window.stop();
+        } else {
+             // If on real domain but API failed, allow access (Availability vs Security trade-off)
+             if (onVerified) onVerified();
+        }
       }
     };
 
-    verifyIntegrity();
+    checkDomainIntegrity();
   }, [onVerified]);
 
+  // Render nothing while checking
   return null;
 };
 
