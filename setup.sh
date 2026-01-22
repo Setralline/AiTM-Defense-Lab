@@ -159,8 +159,15 @@ fi
 
 # 5. Launch Docker
 echo -e "${YELLOW}[Step 5] Launching Containers...${NC}"
+
+# [FIX] Create logs directory AND force recursive permissions for existing files
+# This fixes the EACCES error if files were previously created by root during older runs
 mkdir -p backend/logs
-chmod 777 backend/logs 2>/dev/null
+if [[ "$OS_TYPE" == "linux" ]]; then
+    $SUDO_CMD chmod -R 777 backend/logs 2>/dev/null
+else
+    chmod -R 777 backend/logs 2>/dev/null
+fi
 
 $SUDO_CMD docker-compose down -v 2>/dev/null
 $SUDO_CMD docker-compose up --build -d
