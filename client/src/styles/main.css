@@ -15,7 +15,7 @@
   --cyber-red: #ff2a6d;
   --cyber-green: #05d5aa;
   --cyber-gold: #f59e0b;
-
+  
   /* --- BACKGROUNDS --- */
   --bg-app: #050608;
   /* Deepest Black */
@@ -133,6 +133,7 @@ body {
   overflow: hidden;
 }
 
+/* Badge Styling */
 .clearance-badge {
   position: absolute;
   top: 0;
@@ -196,15 +197,16 @@ body {
   color: var(--cyber-red);
 }
 
-/* --- QR CODE CENTERING FIX --- */
+.status-icon {
+  font-size: 1rem;
+}
+
+/* --- QR SCANNER FIXED --- */
 .qr-container {
   background: #fff;
-  /* White background for QR readability */
   padding: 1.5rem;
   border-radius: 4px;
   margin-bottom: 1.5rem;
-
-  /* Flex Centering */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -258,11 +260,9 @@ body {
   text-transform: uppercase;
   letter-spacing: 1.5px;
   cursor: pointer;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   position: relative;
   width: 100%;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -291,7 +291,6 @@ body {
   margin-top: 12px;
 }
 
-/* Variants */
 .btn--primary {
   background-color: var(--cyber-cyan);
   color: #000;
@@ -357,7 +356,6 @@ body {
   margin-top: 1rem;
 }
 
-/* Icon Only Button Reset */
 .btn--icon-only {
   width: 36px;
   padding: 0;
@@ -394,7 +392,6 @@ body {
   cursor: pointer;
   flex-shrink: 0;
   transition: all 0.2s;
-
   background-position: center;
   background-repeat: no-repeat;
   background-size: 0;
@@ -524,9 +521,72 @@ body {
 }
 
 /* =========================================
-   9. UTILITIES & NOTIFICATIONS
+   9. UTILITIES & TOASTS (FIXED)
    ========================================= */
-/* Custom Toast Notification Style */
+
+/* --- CUSTOM ALERT (CRITICAL WARNING) --- */
+.toast-alert {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+.toast-alert__title {
+  color: var(--cyber-red);
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.toast-alert__body {
+  color: #fff;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.toast-alert__actions {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.toast-alert__btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 6px 16px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.toast-alert__btn:hover {
+  border-color: #fff;
+  color: #fff;
+}
+
+.toast-alert__btn--confirm {
+  background: rgba(255, 42, 109, 0.1);
+  border-color: var(--cyber-red);
+  color: var(--cyber-red);
+}
+
+.toast-alert__btn--confirm:hover {
+  background: var(--cyber-red);
+  color: #fff;
+  box-shadow: 0 0 10px var(--cyber-red);
+}
+
+/* --- STANDARD TOASTS --- */
 div[role="status"],
 div[data-rht-toaster="true"]>div>div {
   background: var(--bg-card) !important;
