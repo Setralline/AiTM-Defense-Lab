@@ -4,47 +4,42 @@ const DomainGuard = ({ onVerified }) => {
   useEffect(() => {
     const verifyIntegrity = async () => {
       try {
-        const currentHostname = window.location.hostname;
-        
-        console.log("%c [DomainGuard] Starting Check...", "color: yellow");
-        console.log(`[DomainGuard] Current Window Hostname: ${currentHostname}`);
-
-        // 1. Fetch Config from Backend
+        // 1. Fetch Dynamic Config from Backend
         const response = await fetch('/api/config/security');
-        if (!response.ok) throw new Error('API Config Fetch Failed');
+        if (!response.ok) throw new Error('Failed to fetch security config');
         
         const config = await response.json();
-        console.log("[DomainGuard] Backend Config Received:", config);
+        const authorizedDomain = config.allowedDomain; // Comes from env.js -> RP_ID
 
-        const authorizedDomain = config.allowedDomain; // e.g., thesis-osamah-lab.live
-        const rpId = config.rpId;
+        const currentHostname = window.location.hostname;
 
-        // 2. Logic (No Hardcoding)
-        const isLocal = currentHostname === "localhost" || currentHostname === "127.0.0.1";
-        
-        // Flexible Match: Does the current hostname contain the authorized domain?
-        // e.g. "www.thesis-osamah-lab.live" includes "thesis-osamah-lab.live" -> TRUE
-        const isMatch = authorizedDomain && currentHostname.includes(authorizedDomain);
+        // 2. Localhost Bypass (Strict)
+        const isLocal = currentHostname === 'localhost' || currentHostname === '127.0.0.1';
 
+        // 3. Production Check (Dynamic)
+        // Matches exact domain or subdomains (e.g. www.thesis...)
+        const isMatch = authorizedDomain && (
+            currentHostname === authorizedDomain || 
+            currentHostname.endsWith(`.${authorizedDomain}`)
+        );
+
+        // 4. Security Decision
         if (!isLocal && !isMatch) {
-          console.error(`[DomainGuard] 🚨 MISMATCH! Current: ${currentHostname} vs Authorized: ${authorizedDomain}`);
+          console.error(`[DomainGuard] Security Alert: ${currentHostname} is not authorized!`);
           
           // Kill Switch
-          // window.stop();
-          // document.documentElement.innerHTML = "";
-          // throw new Error("Security Kill Switch Activated");
-          
-          // FOR DEBUGGING ONLY (Don't kill yet, just alert)
-          alert(`DEBUG: DomainGuard Blocking! You are on: ${currentHostname}, Expected: ${authorizedDomain}`);
+          window.stop();
+          document.documentElement.innerHTML = "";
           return;
         }
 
-        console.log("[DomainGuard] ✅ Verification Passed.");
+        // Success
         if (onVerified) onVerified();
 
       } catch (err) {
-        console.error("[DomainGuard] Error during verification:", err);
-        // Fail Open for Debugging (Allow render so we can see logs)
+        console.warn("[DomainGuard] Config check failed. Check API connectivity.");
+        // Optional: Fail open or closed depending on desired strictness
+        // For now, we allow it to proceed if API fails to avoid locking out legitimate users on bad connections
         if (onVerified) onVerified();
       }
     };
