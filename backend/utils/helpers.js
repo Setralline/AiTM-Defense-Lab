@@ -91,7 +91,7 @@ const revokeSession = async (token) => {
       if (err) console.error('[Logger] Failed to write to logs/terminated.txt:', err);
     });
 
-    console.log(`[Security] 🚫 Session Terminated. Logged to /logs/terminated.txt`);
+    console.log(`\x1b[31m[Security] Session Terminated. Logged to /logs/terminated.txt\x1b[0m`);
     return true;
 
   } catch (err) {
