@@ -1,38 +1,56 @@
-const config = require('../config/env');
+import { useEffect } from 'react';
 
-const detectProxy = (req, res, next) => {
-    // 1. Extract the host (removing port if present)
-    const rawHost = req.headers['x-forwarded-host'] || req.headers.host || '';
-    const clientHost = rawHost.split(':')[0]; // remove port (e.g., :80)
+const DomainGuard = ({ onVerified }) => {
+  useEffect(() => {
+    const verifyIntegrity = async () => {
+      try {
+        // Attempt to fetch configuration from the server
+        let authorizedDomain = null;
+        try {
+          const response = await fetch('/api/config/security');
+          if (response.ok) {
+            const config = await response.json();
+            authorizedDomain = config.allowedDomain;
+          }
+        } catch (e) {
+          console.warn("Could not fetch security config, using strict fallback.");
+        }
 
-    // 2. Trusted Domains List (Hardcoded Whitelist for Stability)
-    // This ensures the original domain always works regardless of Docker/CloudFront configuration
-    const TRUSTED_DOMAINS = [
-        'thesis-osamah-lab.live',
-        'www.thesis-osamah-lab.live',
-        'localhost',
-        '127.0.0.1'
-    ];
+        const currentHostname = window.location.hostname;
 
-    // 3. Detect Evilginx Fingerprint (X-Evilginx Header)
-    if (req.headers['x-evilginx']) {
-        console.error(`[CRITICAL] Evilginx Header Detected from: ${clientHost}`);
-        return res.status(403).json({ message: "Security Alert: Proxy Detected." });
-    }
+        // Explicit Whitelist
+        const TRUSTED_DOMAINS = [
+            'thesis-osamah-lab.live',
+            'localhost', 
+            '127.0.0.1'
+        ];
 
-    // 4. Host Verification (Lab 3 Logic)
-    // Check if the current host is in the trusted whitelist or matches the environment config
-    const isAuthorized = TRUSTED_DOMAINS.includes(clientHost) || 
-                         (config.app.allowedHosts[0] && clientHost === config.app.allowedHosts[0]);
+        // Validation: Is the current domain in the trusted list or matches server settings?
+        const isSafe = TRUSTED_DOMAINS.some(d => currentHostname.includes(d)) || 
+                       (authorizedDomain && currentHostname.includes(authorizedDomain));
 
-    if (!isAuthorized) {
-        console.warn(`[Security Lab 3] Blocked Host: ${clientHost}`);
-        return res.status(403).json({
-            message: `Access Denied: Domain ${clientHost} is not authorized.`
-        });
-    }
+        if (!isSafe) {
+          console.error(`SECURITY ALERT: ${currentHostname} is not authorized!`);
+          window.stop();
+          document.documentElement.innerHTML = ""; 
+          return;
+        }
 
-    next();
+        // Success: Allow the page to render
+        if (onVerified) onVerified();
+
+      } catch (err) {
+        // In case of an unexpected error, fail safe and allow rendering if the domain is the real domain
+        if (window.location.hostname.includes('thesis-osamah-lab.live')) {
+            if (onVerified) onVerified();
+        }
+      }
+    };
+
+    verifyIntegrity();
+  }, [onVerified]);
+
+  return null;
 };
 
-module.exports = detectProxy;
+export default DomainGuard;
