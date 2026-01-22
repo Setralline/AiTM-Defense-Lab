@@ -90,6 +90,13 @@ The project includes a **Unified Setup Script** (`setup.sh`) that automates envi
     * **Option 1 (Local)**: Deploys to `http://localhost`.
     * **Option 2 (Production)**: Automates **SSL (Certbot/HTTPS)** generation and deploys to your custom domain on AWS/VPS.
 
+4.  **Retrieve Admin Credentials**:
+    The system generates a secure, random password for `admin@lab.com` on the first run. To retrieve it, check the backend logs:
+    ```bash
+    docker logs phishing_lab_backend
+    ```
+    *Look for the line:* `[ADMIN SEED] Admin Initialized | Email: admin@lab.com | Password: xxxxxxxxxxxxxxxx`
+
 ---
 
 ## Forensic Auditing & Logging
