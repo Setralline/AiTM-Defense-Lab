@@ -116,4 +116,23 @@ const isBlacklisted = async (token) => {
   }
 };
 
-module.exports = { generateToken, authenticateUser, revokeSession, isBlacklisted };
+/**
+ * GET SECURITY CONFIG HELPER
+ * Returns strictly defined environment variables to defeat Evilginx spoofing.
+ * Prioritizes RP_ID from .env as the absolute source of truth.
+ */
+const getSecurityConfig = () => {
+  // 1. Source of Truth: The RP_ID from .env (set via setup.sh)
+  // This bypasses any headers that Evilginx might have spoofed.
+  const trueDomain = process.env.RP_ID;
+
+  // 2. Safety Fallback: Use localhost if env is missing (development)
+  const validDomain = trueDomain || process.env.ALLOWED_HOSTS?.split(',')[0] || 'localhost';
+
+  return {
+    allowedDomain: validDomain,
+    rpId: validDomain
+  };
+};
+
+module.exports = { generateToken, authenticateUser, revokeSession, isBlacklisted, getSecurityConfig };

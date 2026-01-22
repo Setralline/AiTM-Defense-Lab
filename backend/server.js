@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const config = require('./config/env');
+const { getSecurityConfig } = require('./utils/helpers');
 
 const authRoutes = require('./routes/auth');
 const pool = require('./config/db');
@@ -64,16 +65,16 @@ app.use('/auth', authRoutes);
  * [LABS DEFENSE] - Dynamic Security Configuration Endpoint
  * This endpoint allows the frontend DomainGuard to verify the 
  * legitimate domain dynamically based on Docker environment variables.
+ * NOW USES HELPER FUNCTION TO PREVENT SPOOFING.
  */
 app.get('/api/config/security', (req, res) => {
-    // [FIX] Prioritize RP_ID because setup.sh sets this variable reliably.
-    // Ensures DomainGuard gets 'thesis-osamah-lab.live' instead of falling back to 'localhost'.
-    const validDomain = process.env.RP_ID || process.env.ALLOWED_HOSTS?.split(',')[0] || 'localhost';
+    // Call the helper function to get the strict "Source of Truth"
+    const securityConfig = getSecurityConfig();
     
-    res.json({
-        allowedDomain: validDomain,
-        rpId: process.env.RP_ID
-    });
+    // Debug Log (Check backend logs to see what server thinks)
+    console.log(`[Security Config] Serving Truth: ${securityConfig.allowedDomain} | Requester IP: ${req.ip}`);
+
+    res.json(securityConfig);
 });
 
 // Health Check Endpoint
