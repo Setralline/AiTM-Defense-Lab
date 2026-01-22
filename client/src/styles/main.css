@@ -9,7 +9,7 @@
 :root {
   /* --- PALETTE: Cyber Blue (High Contrast) --- */
   --cyber-cyan: #00f0ff;
-  --cyber-cyan-dim: rgba(0, 240, 255, 0.15);
+  --cyber-cyan-dim: rgba(0, 240, 255, 0.1);
   
   --cyber-purple: #7b61ff;
   --cyber-red: #ff2a6d;
@@ -107,7 +107,89 @@ body {
 }
 
 /* =========================================
-   4. BUTTONS (Fixed Icon Alignment)
+   4. DASHBOARD / USER PANEL (FIXED)
+   ========================================= */
+.info-panel {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow: hidden;
+}
+
+/* Badge Styling */
+.clearance-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border-bottom-left-radius: 6px;
+  font-family: var(--font-display);
+  z-index: 10;
+}
+
+.clearance-badge--secure {
+  background-color: var(--cyber-green);
+  color: #000;
+}
+
+.clearance-badge--restricted {
+  background-color: var(--cyber-red);
+  color: #fff;
+}
+
+/* Row Layout */
+.info-panel__row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Icon Container */
+.info-panel__icon {
+  color: var(--cyber-cyan);
+  width: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.1rem;
+}
+
+.info-panel__text {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: #fff;
+}
+
+/* Status Indicators */
+.info-panel__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+.info-panel__status--secure { color: var(--cyber-green); }
+.info-panel__status--warning { color: var(--cyber-red); }
+
+/* Status Icon (Lock/Unlock) */
+.status-icon {
+  font-size: 1rem;
+}
+
+/* =========================================
+   5. BUTTONS (Fixed Icon Alignment)
    ========================================= */
 .btn {
   height: 48px;
@@ -215,7 +297,7 @@ body {
 }
 
 /* =========================================
-   5. CHECKBOX (Fixed: Visible Mark)
+   6. CHECKBOX (Fixed: Visible Mark)
    ========================================= */
 .checkbox {
   display: flex;
@@ -262,7 +344,7 @@ body {
 }
 
 /* =========================================
-   6. INPUTS
+   7. INPUTS
    ========================================= */
 .input-group { position: relative; width: 100%; margin-bottom: 1.25rem; }
 
@@ -303,7 +385,7 @@ body {
 .input-group__field:focus + .input-group__icon { color: var(--cyber-cyan); }
 
 /* =========================================
-   7. FOOTER
+   8. FOOTER
    ========================================= */
 .footer {
   width: 100%;
@@ -333,8 +415,19 @@ body {
 @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
 /* =========================================
-   8. UTILITIES
+   9. UTILITIES & NOTIFICATIONS
    ========================================= */
+/* Custom Toast Notification Style */
+div[role="status"] {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--cyber-cyan) !important;
+  font-family: var(--font-display) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.2) !important;
+  border-radius: 4px !important;
+}
+
 .home-grid { display: flex; flex-direction: column; gap: 1rem; width: 100%; }
 .home-desc { text-align: center; color: var(--text-muted); margin-bottom: 1.5rem; font-size: 1rem; line-height: 1.4; }
 .home-footer-decor { margin-top: 1.5rem; text-align: center; font-size: 0.8rem; color: var(--cyber-green); letter-spacing: 2px; display: flex; justify-content: center; gap: 0.5rem; opacity: 0.8; }
