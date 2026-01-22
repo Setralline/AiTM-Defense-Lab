@@ -1,0 +1,712 @@
+/* =========================================
+   0. FONTS & IMPORTS
+   ========================================= */
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* =========================================
+   1. VARIABLES & DESIGN TOKENS
+   ========================================= */
+:root {
+  /* --- PALETTE: Cyber Blue (High Contrast) --- */
+  --cyber-cyan: #00f0ff;
+  --cyber-cyan-dim: rgba(0, 240, 255, 0.15);
+
+  --cyber-purple: #7b61ff;
+  --cyber-red: #ff2a6d;
+  --cyber-green: #05d5aa;
+  --cyber-gold: #f59e0b;
+
+  /* --- BACKGROUNDS --- */
+  --bg-app: #050608;
+  /* Deepest Black */
+  --bg-card: #0e1016;
+  /* Card Background */
+  --bg-input: #151821;
+  /* Input Field */
+
+  --text-main: #e0e6ed;
+  --text-muted: #94a3b8;
+  --border-color: #2d3748;
+
+  /* --- TYPOGRAPHY --- */
+  --font-display: 'Rajdhani', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* =========================================
+   2. GLOBAL RESET
+   ========================================= */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: var(--font-display);
+  margin: 0;
+  min-height: 100vh;
+  line-height: 1.5;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* =========================================
+   3. LAYOUT & CARD
+   ========================================= */
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 1rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2.5rem;
+  box-shadow: 0 0 40px -10px rgba(0, 0, 0, 0.7);
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  border-color: var(--cyber-cyan);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.1);
+}
+
+/* --- LOGO FIX --- */
+.card__logo {
+  width: 50px;
+  /* Smaller size */
+  height: auto;
+  margin: 0 auto 1.5rem auto;
+  /* Center align */
+  display: block;
+  filter: drop-shadow(0 0 8px var(--cyber-cyan-dim));
+}
+
+.card__title {
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.8rem;
+  letter-spacing: 2px;
+  color: #fff;
+  margin-bottom: 2rem;
+  text-transform: uppercase;
+  text-shadow: 0 0 15px var(--cyber-cyan-dim);
+}
+
+.card__footer {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+  color: var(--cyber-purple);
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* =========================================
+   4. DASHBOARD / USER PANEL (FIXED)
+   ========================================= */
+.info-panel {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow: hidden;
+}
+
+/* Badge Styling */
+.clearance-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border-bottom-left-radius: 6px;
+  font-family: var(--font-display);
+  z-index: 10;
+}
+
+.clearance-badge--secure {
+  background-color: var(--cyber-green);
+  color: #000;
+}
+
+.clearance-badge--restricted {
+  background-color: var(--cyber-red);
+  color: #fff;
+}
+
+.info-panel__row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.info-panel__icon {
+  color: var(--cyber-cyan);
+  width: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.2rem;
+}
+
+.info-panel__text {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: #fff;
+}
+
+.info-panel__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.info-panel__status--secure {
+  color: var(--cyber-green);
+}
+
+.info-panel__status--warning {
+  color: var(--cyber-red);
+}
+
+.status-icon {
+  font-size: 1rem;
+}
+
+/* --- QR SCANNER FIXED --- */
+.qr-container {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.qr-container__label {
+  color: #000;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  letter-spacing: 1px;
+}
+
+.qr-container__img {
+  width: 160px;
+  height: 160px;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+/* FIDO Lab Centering */
+.fido-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.fido-icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  color: var(--cyber-green);
+  filter: drop-shadow(0 0 15px rgba(5, 213, 170, 0.4));
+}
+
+/* =========================================
+   5. BUTTONS (Fixed Icon Alignment)
+   ========================================= */
+.btn {
+  height: 48px;
+  padding: 0 3.5rem 0 3.5rem;
+  /* Reserve space for absolute icon */
+  border-radius: 4px;
+  border: 1px solid transparent;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+/* Absolute Position Icons for Perfect Alignment */
+.btn svg {
+  position: absolute;
+  left: 1.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn+.btn {
+  margin-top: 12px;
+}
+
+.btn--primary {
+  background-color: var(--cyber-cyan);
+  color: #000;
+  box-shadow: 0 0 15px var(--cyber-cyan-dim);
+}
+
+.btn--primary:hover {
+  background-color: #fff;
+  box-shadow: 0 0 25px var(--cyber-cyan);
+}
+
+.btn--secondary {
+  background: transparent;
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+
+.btn--secondary:hover {
+  border-color: var(--text-main);
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.btn--outline {
+  background: transparent;
+  border-color: var(--cyber-cyan);
+  color: var(--cyber-cyan);
+}
+
+.btn--outline:hover {
+  background-color: var(--cyber-cyan-dim);
+  box-shadow: 0 0 10px var(--cyber-cyan-dim);
+}
+
+.btn--danger {
+  background: rgba(255, 42, 109, 0.1);
+  border-color: var(--cyber-red);
+  color: var(--cyber-red);
+}
+
+.btn--danger:hover {
+  background-color: var(--cyber-red);
+  color: #fff;
+  box-shadow: 0 0 15px var(--cyber-red);
+}
+
+.btn--secure-gold {
+  border-color: var(--cyber-gold) !important;
+  color: var(--cyber-gold) !important;
+  background: rgba(243, 156, 18, 0.05) !important;
+}
+
+.btn--secure-gold:hover {
+  background: rgba(243, 156, 18, 0.15) !important;
+  box-shadow: 0 0 15px rgba(243, 156, 18, 0.3);
+}
+
+.btn--full {
+  width: 100%;
+}
+
+.btn--mt {
+  margin-top: 1rem;
+}
+
+.btn--icon-only {
+  width: 36px;
+  padding: 0;
+  min-width: 36px;
+  height: 36px;
+}
+
+.btn--icon-only svg {
+  position: static;
+  transform: none;
+}
+
+/* =========================================
+   6. CHECKBOX (Fixed: Visible Mark)
+   ========================================= */
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+  margin: 1rem 0 1.5rem 0;
+  width: fit-content;
+}
+
+.checkbox__input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 0;
+}
+
+.checkbox__input:checked {
+  background-color: var(--cyber-cyan);
+  border-color: var(--cyber-cyan);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+  background-size: 12px;
+  box-shadow: 0 0 10px var(--cyber-cyan-dim);
+}
+
+.checkbox__label {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-family: var(--font-display);
+  letter-spacing: 0.5px;
+  padding-top: 2px;
+}
+
+/* =========================================
+   7. INPUTS
+   ========================================= */
+.input-group {
+  position: relative;
+  width: 100%;
+  margin-bottom: 1.25rem;
+}
+
+.input-group__field {
+  width: 100%;
+  height: 48px;
+  padding: 0 1rem 0 3rem;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.input-group__field:focus {
+  border-color: var(--cyber-cyan);
+  box-shadow: 0 0 0 1px var(--cyber-cyan);
+  outline: none;
+}
+
+.input-group__icon {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.input-group__field:focus+.input-group__icon {
+  color: var(--cyber-cyan);
+}
+
+/* =========================================
+   8. FOOTER
+   ========================================= */
+.footer {
+  width: 100%;
+  padding: 0.75rem 2rem;
+  border-top: 1px solid var(--border-color);
+  background: rgba(10, 14, 23, 0.95);
+  backdrop-filter: blur(10px);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+}
+
+.footer__credits strong {
+  color: #fff;
+  font-weight: 500;
+  letter-spacing: 1px;
+  margin-left: 5px;
+}
+
+.footer__status {
+  display: flex;
+  align-items: center;
+  color: var(--cyber-green);
+  font-weight: 700;
+  gap: 8px;
+  letter-spacing: 1px;
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  background-color: var(--cyber-green);
+  border-radius: 50%;
+  box-shadow: 0 0 5px var(--cyber-green);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+/* =========================================
+   9. UTILITIES & TOASTS (FIXED)
+   ========================================= */
+
+/* --- CRITICAL ALERT TOAST FIX --- */
+/* Matches the className 'toast-custom-border' from useMFA.jsx */
+.toast-custom-border {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--cyber-red) !important;
+  box-shadow: 0 0 25px rgba(255, 42, 109, 0.3) !important;
+  border-radius: 6px !important;
+  padding: 1.5rem !important;
+  max-width: 400px !important;
+  width: 100%;
+}
+
+.toast-alert {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+.toast-alert__title {
+  color: var(--cyber-red);
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: block;
+}
+
+.toast-alert__actions {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.toast-alert__btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 8px 20px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.toast-alert__btn:hover {
+  border-color: #fff;
+  color: #fff;
+}
+
+.toast-alert__btn--confirm {
+  background: rgba(255, 42, 109, 0.1);
+  border-color: var(--cyber-red);
+  color: var(--cyber-red);
+}
+
+.toast-alert__btn--confirm:hover {
+  background: var(--cyber-red);
+  color: #fff;
+  box-shadow: 0 0 10px var(--cyber-red);
+}
+
+/* --- STANDARD TOASTS --- */
+div[role="status"],
+div[data-rht-toaster="true"]>div>div {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--cyber-cyan) !important;
+  font-family: var(--font-display) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.2) !important;
+  border-radius: 4px !important;
+}
+
+/* Home/Admin */
+.home-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.home-desc {
+  text-align: center;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.home-footer-decor {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--cyber-green);
+  letter-spacing: 2px;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  opacity: 0.8;
+}
+
+.admin-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+  max-width: 900px;
+}
+
+.admin-toolbar {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.admin-toolbar .btn {
+  margin: 0;
+  flex: 1;
+  padding: 0 1rem;
+}
+
+.admin-toolbar .btn svg {
+  position: static;
+  transform: none;
+  margin-right: 8px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.user-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-input);
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 0.5rem;
+}
+
+.user-item--admin {
+  border-left: 3px solid var(--cyber-purple);
+}
+
+.user-item__info h4 {
+  margin: 0;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
