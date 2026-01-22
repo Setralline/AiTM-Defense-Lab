@@ -5,39 +5,47 @@ const DomainGuard = ({ onVerified }) => {
     const verifyIntegrity = async () => {
       try {
         const currentHostname = window.location.hostname;
-        const TRUSTED_ROOT = 'thesis-osamah-lab.live';
+        
+        console.log("%c [DomainGuard] Starting Check...", "color: yellow");
+        console.log(`[DomainGuard] Current Window Hostname: ${currentHostname}`);
 
-        // 1. Strict Localhost Check (Exact Match Only)
-        // This fixes the bug where "localhost.live" was allowed because it contained "localhost"
-        const isLocal = currentHostname === 'localhost' || currentHostname === '127.0.0.1';
+        // 1. Fetch Config from Backend
+        const response = await fetch('/api/config/security');
+        if (!response.ok) throw new Error('API Config Fetch Failed');
+        
+        const config = await response.json();
+        console.log("[DomainGuard] Backend Config Received:", config);
 
-        // 2. Strict Production Domain Check
-        // Allows "thesis-osamah-lab.live" or "www.thesis-osamah-lab.live"
-        // Blocks "fake-thesis-osamah-lab.live" or "evil.com"
-        const isProduction = currentHostname === TRUSTED_ROOT || 
-                             currentHostname.endsWith(`.${TRUSTED_ROOT}`);
+        const authorizedDomain = config.allowedDomain; // e.g., thesis-osamah-lab.live
+        const rpId = config.rpId;
 
-        // 3. Security Decision
-        if (!isLocal && !isProduction) {
-          console.error(`SECURITY ALERT: ${currentHostname} is not authorized!`);
+        // 2. Logic (No Hardcoding)
+        const isLocal = currentHostname === "localhost" || currentHostname === "127.0.0.1";
+        
+        // Flexible Match: Does the current hostname contain the authorized domain?
+        // e.g. "www.thesis-osamah-lab.live" includes "thesis-osamah-lab.live" -> TRUE
+        const isMatch = authorizedDomain && currentHostname.includes(authorizedDomain);
+
+        if (!isLocal && !isMatch) {
+          console.error(`[DomainGuard] 🚨 MISMATCH! Current: ${currentHostname} vs Authorized: ${authorizedDomain}`);
           
-          // Kill Switch: Stop execution and clear DOM
-          window.stop();
-          document.documentElement.innerHTML = ""; 
+          // Kill Switch
+          // window.stop();
+          // document.documentElement.innerHTML = "";
+          // throw new Error("Security Kill Switch Activated");
           
-          // Hard Redirect (Optional backup)
-          window.location.href = "about:blank";
+          // FOR DEBUGGING ONLY (Don't kill yet, just alert)
+          alert(`DEBUG: DomainGuard Blocking! You are on: ${currentHostname}, Expected: ${authorizedDomain}`);
           return;
         }
 
-        // Success: Allow the page to render
+        console.log("[DomainGuard] ✅ Verification Passed.");
         if (onVerified) onVerified();
 
       } catch (err) {
-        // Fail-safe: If an error occurs, checking against the hardcoded domain guarantees safety
-        if (window.location.hostname.endsWith('thesis-osamah-lab.live')) {
-            if (onVerified) onVerified();
-        }
+        console.error("[DomainGuard] Error during verification:", err);
+        // Fail Open for Debugging (Allow render so we can see logs)
+        if (onVerified) onVerified();
       }
     };
 
