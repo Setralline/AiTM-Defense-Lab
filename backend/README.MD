@@ -2,7 +2,7 @@
 
 **Master's Thesis Project by Osamah Amer (2026)**
 
-This directory contains the server-side logic for the Phishing Defense Lab. It acts as the secure gateway handling authentication, database persistence, and the "Active Session Revocation" logic with forensic auditing capabilities.
+This directory contains the server-side logic for the Phishing Defense Lab. It acts as the secure gateway handling authentication, database persistence, traffic analysis (Lab 3), and the "Active Session Revocation" logic with forensic auditing capabilities.
 
 ---
 
@@ -10,7 +10,7 @@ This directory contains the server-side logic for the Phishing Defense Lab. It a
 
 * **Runtime:** Node.js & Express
 * **Database:** PostgreSQL (with `pg` pool)
-* **Security:** `bcryptjs` (Hashing), `jsonwebtoken` (JWT), `speakeasy` (MFA/TOTP)
+* **Security:** `bcryptjs` (Hashing), `jsonwebtoken` (JWT), `helmet` (Headers), `speakeasy` (MFA/TOTP)
 * **Auth Standards:** SimpleWebAuthn (FIDO2/WebAuthn Server)
 * **Logging:** Native File System (`fs`) for forensic audit trails
 * **Architecture:** MVC (Model-View-Controller)
@@ -66,7 +66,7 @@ DB_PORT=5432
 JWT_SECRET=super_secret_unified_key_2026
 CORS_ORIGIN=http://localhost:5173
 
-# FIDO2 Configuration (Critical for v1.1.0+)
+# FIDO2 Configuration (Critical for Lab 5)
 RP_ID=localhost
 EXPECTED_ORIGINS=http://localhost:5173,http://localhost
 
@@ -113,7 +113,7 @@ When `server.js` starts, it triggers `config/initDb.js` which automatically:
 
 ## Architecture Structure
 
-Based on the project file system:
+Project file system:
 
 * **`config/`**:
 * `db.js`: PostgreSQL connection pool configuration.
@@ -125,11 +125,12 @@ Based on the project file system:
 * `authController.js`: General auth logic (Admin login, User management).
 * `level1Controller.js`: Logic for Legacy Auth (Cookie-based).
 * `level2Controller.js`: Logic for Modern Auth (Token-based).
-* `fidoController.js`: Handling WebAuthn registration and authentication.
+* `fidoController.js`: Handling WebAuthn registration and authentication (Lab 5).
 
 
 * **`middleware/`**:
 * `checkBlacklist.js`: Interceptor that blocks revoked tokens (Active Defense) and logs incidents.
+* `detectProxy.js`: **[NEW]** Traffic analysis engine that inspects headers (`Host`, `X-Evilginx`) to detect and block reverse proxies (Lab 3).
 
 
 * **`logs/` (Auto-Generated)**:
@@ -137,7 +138,7 @@ Based on the project file system:
 
 
 * **`utils/`**:
-* `helpers.js`: Shared utility functions.
+* `helpers.js`: Shared utility functions and **Security Configuration Obfuscator**.
 * `envParser.js`: Helper to parse environment lists safely.
 
 
@@ -146,10 +147,12 @@ Based on the project file system:
 
 ## Key Security Features Implemented
 
-1. **Active Revocation:** The `checkBlacklist` middleware queries the database on every request to ensure the token hasn't been revoked.
-2. **Forensic Auditing:** Detailed logging of both terminated sessions and blocked access attempts for security analysis.
-3. **Hybrid Auth Handling:** Controllers are separated (`level1` vs `level2`) to simulate different vulnerability surfaces.
-4. **Secure Seeding:** Passwords are never stored in plain text; `initDb.js` uses `bcrypt` before seeding the database.
+1. **Traffic Analysis (Lab 3):** The `detectProxy` middleware inspects incoming HTTP headers to identify discrepancies between the `Host` header and the authorized `RP_ID`, effectively blocking naive proxy attacks.
+2. **Config Obfuscation (Lab 4):** The security config endpoint (`/api/config/security`) returns the authorized domain in **Base64** format to bypass Evilginx's content replacement filters.
+3. **Active Revocation:** The `checkBlacklist` middleware queries the database on every request to ensure the token hasn't been revoked.
+4. **Forensic Auditing:** Detailed logging of both terminated sessions and blocked access attempts for security analysis.
+5. **Hybrid Auth Handling:** Controllers are separated (`level1` vs `level2`) to simulate different vulnerability surfaces.
+6. **Secure Seeding:** Passwords are never stored in plain text; `initDb.js` uses `bcrypt` before seeding the database.
 
 ---
 

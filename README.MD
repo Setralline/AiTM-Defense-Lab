@@ -6,7 +6,7 @@
 
 **Master's Thesis Project | Osamah Amer (2026)** *Adversary-in-the-Middle (AiTM) Attack Analysis & Defense*
 
-The **Phishing Defense Lab** is a professional full-stack simulation environment designed to analyze the mechanics of modern phishing attacks—specifically Reverse Proxy (AiTM) attacks like *Evilginx2*—and evaluate the efficacy of various defense mechanisms. 
+The **Phishing Defense Lab** is a professional full-stack simulation environment designed to analyze the mechanics of modern phishing attacks—specifically Reverse Proxy (AiTM) attacks like *Evilginx2*—and evaluate the efficacy of various defense mechanisms.
 
 Unlike standard vulnerable web applications, this platform focuses exclusively on **Authentication Security**, providing a comparative analysis of legacy protocols versus hardware-bound credentials (FIDO2/WebAuthn).
 
@@ -21,8 +21,6 @@ The project follows a decoupled, containerized architecture designed for consist
 * **Database**: PostgreSQL for persistent storage and an active **Token Blacklist** for immediate session revocation.
 * **Infrastructure**: Nginx acting as a Reverse Proxy with Docker Compose for full-stack orchestration.
 
-
-
 ---
 
 ## Research Scenarios (The 5 Levels)
@@ -34,11 +32,42 @@ The laboratory is structured into five levels, representing the evolution of web
 * **Level 2: Modern SPA (JWT)**: Stateless JSON Web Tokens. INTERCEPT-ready during the initial handshake in non-hardened environments.
 
 ### 2. Defended Implementations
-* **Level 3: Server-Side Heuristics**: Inspects HTTP headers (`Host`, `X-Forwarded-For`) to detect discrepancies between client intent and request origin.
-* **Level 4: Client-Side Integrity (Domain Guard)**: JavaScript execution verifies the `window.location.hostname` against a whitelist, neutralizing proxy-based phishing.
+* **Level 3: Server-Side Traffic Analysis**: 
+    * **Fingerprinting**: Inspects HTTP headers (`X-Evilginx`) to detect default tool signatures.
+    * **Host Validation**: Enforces strict "Source of Truth" checks against `Host` and `X-Forwarded-Host` headers to detect proxy forwarding discrepancies.
+
+* **Level 4: Client-Side Integrity (Domain Guard)**: 
+    * **Zero Trust Validation**: JavaScript execution verifies the `window.location.hostname` against a strict whitelist.
+    * **Anti-Mirroring (Obfuscation)**: Uses **Base64-encoded** configuration payloads to defeat Evilginx's "Content Replacement" filters (Reality Mirroring), triggering a kill-switch if the decoded origin does not match the browser's URL bar.
 
 ### 3. Immune Implementation
 * **Level 5: Hardware-Bound Auth (FIDO2)**: Uses **WebAuthn/FIDO2** to cryptographically bind authentication to the origin. This renders AiTM attacks mathematically impossible as proxies cannot forge the origin signature.
+
+---
+
+## Future Roadmap & Research Directions
+
+The following defense mechanisms are proposed for future iterations to counter evolving AiTM tactics:
+
+* **Advanced Turing Tests (Captcha Defense)**:
+  * *Objective*: To block automated "pre-flight" probes used by Evilginx bots.
+  * *Mechanism*: Implementing **Cloudflare Turnstile** or hCaptcha to force human interaction before the login form renders.
+
+* **Dynamic Input Randomization**:
+  * *Objective*: To break the static Regex capturers defined in Evilginx Phishlets.
+  * *Mechanism*: Dynamically randomizing HTML input `name` and `id` attributes (e.g., generating `password_x92` instead of `password`) on every page load to render static phishlets ineffective.
+
+---
+
+## Defense Mechanisms Explained
+
+This lab demonstrates how specific defenses break the *Evilginx* kill chain:
+
+| Defense | How it Defeats Evilginx |
+| :--- | :--- |
+| **Header Analysis (Lab 3)** | Detects inconsistencies in `Host` headers and identifies signatures left by default proxy configurations. |
+| **Base64 Obfuscation (Lab 4)** | Evilginx attempts to "Mirror Reality" by replacing real domains in the response with fake ones. By encoding the domain in Base64 (`dGhlc...`), the proxy cannot find/replace the string, revealing the deception to the client-side code. |
+| **Origin Binding (Lab 5)** | Cryptographically binds the session to the domain name. Even if a proxy intercepts the traffic, it cannot generate a valid signature for the fake domain. |
 
 ---
 
@@ -73,7 +102,7 @@ To support academic research and threat analysis, the backend generates real-tim
 | Component | Technology | Description |
 | :--- | :--- | :--- |
 | **Frontend** | React 18, Vite | High-performance UI with custom security themes. |
-| **Backend** | Node.js, Express | Security-hardened REST API. |
+| **Backend** | Node.js, Express | Security-hardened REST API (Non-root Docker user). |
 | **Database** | PostgreSQL 14 | Relational storage with active session blacklisting. |
 | **Auth** | SimpleWebAuthn | FIDO2/WebAuthn server-side implementation. |
 | **Infrastructure** | Docker, Nginx | Container orchestration and SSL termination. |
