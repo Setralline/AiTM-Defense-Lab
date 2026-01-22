@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const config = require('./config/env');
+
 const { getSecurityConfig } = require('./utils/helpers');
 
 const authRoutes = require('./routes/auth');
@@ -68,10 +69,16 @@ app.use('/auth', authRoutes);
  * NOW USES HELPER FUNCTION TO PREVENT SPOOFING.
  */
 app.get('/api/config/security', (req, res) => {
-    // Call the helper function to get the strict "Source of Truth"
+    // 1. Force No-Cache (Critical for Security Configs)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+
+    // 2. Get Truth
     const securityConfig = getSecurityConfig();
     
-    // Debug Log (Check backend logs to see what server thinks)
+    // Debug Log
     console.log(`[Security Config] Serving Truth: ${securityConfig.allowedDomain} | Requester IP: ${req.ip}`);
 
     res.json(securityConfig);
