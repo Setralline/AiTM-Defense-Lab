@@ -130,7 +130,7 @@ input:-webkit-autofill:active {
 }
 
 /* =========================================
-   6. BLOCK: BUTTON
+   6. BLOCK: BUTTON (Refined Animations)
    ========================================= */
 .btn {
   height: 48px;
@@ -145,20 +145,29 @@ input:-webkit-autofill:active {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
   outline: none;
   position: relative;
   overflow: hidden;
   gap: 10px;
   border: 1px solid transparent;
+  
+  /* [FIX] Enhanced Transition for smooth animation */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(0);
+}
+
+/* Click Animation for ALL buttons */
+.btn:active {
+  transform: translateY(2px) !important;
 }
 
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none !important;
 }
 
-/* Button Modifiers */
+/* --- VARIANT: PRIMARY --- */
 .btn--primary {
   background: var(--cyber-red);
   color: #000;
@@ -168,8 +177,10 @@ input:-webkit-autofill:active {
 
 .btn--primary:hover:not(:disabled) {
   box-shadow: 0 0 25px var(--cyber-red);
+  transform: translateY(-2px); /* Lift Effect */
 }
 
+/* --- VARIANT: SECONDARY --- */
 .btn--secondary {
   background: var(--cyber-gray);
   color: var(--cyber-text-main);
@@ -179,8 +190,27 @@ input:-webkit-autofill:active {
 .btn--secondary:hover:not(:disabled) {
   border-color: var(--cyber-text-muted);
   background: #2a2a2a;
+  transform: translateY(-2px); /* Lift Effect */
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
 
+/* --- VARIANT: OUTLINE (New) --- */
+/* [FIX] Explicit style for btn--outline */
+.btn--outline {
+  background: transparent;
+  color: var(--cyber-text-main);
+  border: 1px solid var(--border-color);
+  box-shadow: none;
+}
+
+.btn--outline:hover:not(:disabled) {
+  border-color: var(--cyber-text-main);
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-2px); /* Lift Effect */
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+/* --- VARIANT: DANGER --- */
 .btn--danger {
   background: transparent;
   color: var(--cyber-red);
@@ -189,8 +219,11 @@ input:-webkit-autofill:active {
 
 .btn--danger:hover:not(:disabled) {
   background: rgba(255, 26, 26, 0.1);
+  box-shadow: var(--shadow-glow-red);
+  transform: translateY(-2px); /* Lift Effect */
 }
 
+/* --- VARIANT: GOLD --- */
 .btn--secure-gold {
     border-color: var(--cyber-gold) !important;
     color: #f39c12 !important;
@@ -200,10 +233,21 @@ input:-webkit-autofill:active {
 .btn--secure-gold:hover {
     background: rgba(241, 196, 15, 0.15) !important;
     box-shadow: var(--shadow-glow-gold);
+    transform: translateY(-2px); /* Lift Effect */
 }
 
+/* Width Modifiers */
 .btn--full { width: 100%; }
+.btn--full-width { width: 100%; } /* Alias */
 .btn--mt { margin-top: 10px; }
+
+/* Icon Only Button (Small) */
+.btn--icon-only {
+  padding: 8px;
+  height: auto;
+  width: auto;
+  min-width: 32px;
+}
 
 /* =========================================
    7. BLOCK: INPUT GROUP
@@ -340,6 +384,14 @@ input:-webkit-autofill:active {
   gap: 10px;
 }
 
+.admin-grid {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 450px;
+    gap: 20px;
+}
+
 .user-list {
   width: 100%;
   max-height: 300px;
@@ -370,6 +422,10 @@ input:-webkit-autofill:active {
 .user-item__info span {
   color: #555;
   font-size: 11px;
+}
+
+.user-item__badge {
+    color: var(--cyber-red);
 }
 
 /* =========================================
@@ -556,4 +612,14 @@ input:-webkit-autofill:active {
   border: 1px solid var(--cyber-red) !important;
   background: #0a0a0a !important;
   color: #fff !important;
+}
+
+/* Animations */
+.animate-fade-in {
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
