@@ -15,7 +15,7 @@
   --cyber-red: #ff2a6d;
   --cyber-green: #05d5aa;
   --cyber-gold: #f59e0b;
-  
+
   /* --- BACKGROUNDS --- */
   --bg-app: #050608;
   /* Deepest Black */
@@ -524,7 +524,19 @@ body {
    9. UTILITIES & TOASTS (FIXED)
    ========================================= */
 
-/* --- CUSTOM ALERT (CRITICAL WARNING) --- */
+/* --- CRITICAL ALERT TOAST FIX --- */
+/* Matches the className 'toast-custom-border' from useMFA.jsx */
+.toast-custom-border {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--cyber-red) !important;
+  box-shadow: 0 0 25px rgba(255, 42, 109, 0.3) !important;
+  border-radius: 6px !important;
+  padding: 1.5rem !important;
+  max-width: 400px !important;
+  width: 100%;
+}
+
 .toast-alert {
   display: flex;
   flex-direction: column;
@@ -540,12 +552,7 @@ body {
   margin-bottom: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 1px;
-}
-
-.toast-alert__body {
-  color: #fff;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
+  display: block;
 }
 
 .toast-alert__actions {
@@ -553,18 +560,19 @@ body {
   gap: 1rem;
   width: 100%;
   justify-content: center;
+  margin-top: 1rem;
 }
 
 .toast-alert__btn {
   background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-muted);
-  padding: 6px 16px;
+  padding: 8px 20px;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: 4px;
   transition: all 0.2s;
   text-transform: uppercase;
 }
@@ -598,6 +606,7 @@ div[data-rht-toaster="true"]>div>div {
   border-radius: 4px !important;
 }
 
+/* Home/Admin */
 .home-grid {
   display: flex;
   flex-direction: column;
