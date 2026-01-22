@@ -1,38 +1,38 @@
-import { useEffect } from 'react';
+const config = require('../config/env');
 
-const DomainGuard = ({ onVerified }) => {
-  useEffect(() => {
-    const checkDomain = async () => {
-      try {
-        const response = await fetch('/api/config/security');
-        const config = await response.json();
-        
-        const authorizedDomain = config.allowedDomain;
-        const currentHostname = window.location.hostname;
+const detectProxy = (req, res, next) => {
+    // 1. Extract the host (removing port if present)
+    const rawHost = req.headers['x-forwarded-host'] || req.headers.host || '';
+    const clientHost = rawHost.split(':')[0]; // remove port (e.g., :80)
 
-        // Dev bypass
-        const isLocal = currentHostname === "localhost" || currentHostname === "127.0.0.1";
-        
-        // Flexible check: Does the current URL contain our authorized domain?
-        const isAuthorized = currentHostname.includes(authorizedDomain);
+    // 2. Trusted Domains List (Hardcoded Whitelist for Stability)
+    // This ensures the original domain always works regardless of Docker/CloudFront configuration
+    const TRUSTED_DOMAINS = [
+        'thesis-osamah-lab.live',
+        'www.thesis-osamah-lab.live',
+        'localhost',
+        '127.0.0.1'
+    ];
 
-        if (!isLocal && !isAuthorized) {
-          console.error("DOMAIN MISMATCH - KILL SWITCH ACTIVATED");
-          window.stop();
-          document.documentElement.innerHTML = ""; 
-          return;
-        }
-        
-        // Success: Let the UI render
-        if (onVerified) onVerified();
-      } catch (err) {
-        console.error("Security verification failed", err);
-      }
-    };
-    checkDomain();
-  }, [onVerified]);
+    // 3. Detect Evilginx Fingerprint (X-Evilginx Header)
+    if (req.headers['x-evilginx']) {
+        console.error(`[CRITICAL] Evilginx Header Detected from: ${clientHost}`);
+        return res.status(403).json({ message: "Security Alert: Proxy Detected." });
+    }
 
-  return null;
+    // 4. Host Verification (Lab 3 Logic)
+    // Check if the current host is in the trusted whitelist or matches the environment config
+    const isAuthorized = TRUSTED_DOMAINS.includes(clientHost) || 
+                         (config.app.allowedHosts[0] && clientHost === config.app.allowedHosts[0]);
+
+    if (!isAuthorized) {
+        console.warn(`[Security Lab 3] Blocked Host: ${clientHost}`);
+        return res.status(403).json({
+            message: `Access Denied: Domain ${clientHost} is not authorized.`
+        });
+    }
+
+    next();
 };
 
-export default DomainGuard;
+module.exports = detectProxy;
