@@ -4,35 +4,29 @@ const DomainGuard = ({ onVerified }) => {
   useEffect(() => {
     const verifyIntegrity = async () => {
       try {
-        // Attempt to fetch configuration from the server
-        let authorizedDomain = null;
-        try {
-          const response = await fetch('/api/config/security');
-          if (response.ok) {
-            const config = await response.json();
-            authorizedDomain = config.allowedDomain;
-          }
-        } catch (e) {
-          console.warn("Could not fetch security config, using strict fallback.");
-        }
-
         const currentHostname = window.location.hostname;
+        const TRUSTED_ROOT = 'thesis-osamah-lab.live';
 
-        // Explicit Whitelist
-        const TRUSTED_DOMAINS = [
-            'thesis-osamah-lab.live',
-            'localhost', 
-            '127.0.0.1'
-        ];
+        // 1. Strict Localhost Check (Exact Match Only)
+        // This fixes the bug where "localhost.live" was allowed because it contained "localhost"
+        const isLocal = currentHostname === 'localhost' || currentHostname === '127.0.0.1';
 
-        // Validation: Is the current domain in the trusted list or matches server settings?
-        const isSafe = TRUSTED_DOMAINS.some(d => currentHostname.includes(d)) || 
-                       (authorizedDomain && currentHostname.includes(authorizedDomain));
+        // 2. Strict Production Domain Check
+        // Allows "thesis-osamah-lab.live" or "www.thesis-osamah-lab.live"
+        // Blocks "fake-thesis-osamah-lab.live" or "evil.com"
+        const isProduction = currentHostname === TRUSTED_ROOT || 
+                             currentHostname.endsWith(`.${TRUSTED_ROOT}`);
 
-        if (!isSafe) {
+        // 3. Security Decision
+        if (!isLocal && !isProduction) {
           console.error(`SECURITY ALERT: ${currentHostname} is not authorized!`);
+          
+          // Kill Switch: Stop execution and clear DOM
           window.stop();
           document.documentElement.innerHTML = ""; 
+          
+          // Hard Redirect (Optional backup)
+          window.location.href = "about:blank";
           return;
         }
 
@@ -40,8 +34,8 @@ const DomainGuard = ({ onVerified }) => {
         if (onVerified) onVerified();
 
       } catch (err) {
-        // In case of an unexpected error, fail safe and allow rendering if the domain is the real domain
-        if (window.location.hostname.includes('thesis-osamah-lab.live')) {
+        // Fail-safe: If an error occurs, checking against the hardcoded domain guarantees safety
+        if (window.location.hostname.endsWith('thesis-osamah-lab.live')) {
             if (onVerified) onVerified();
         }
       }
