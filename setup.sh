@@ -159,6 +159,9 @@ fi
 
 # 5. Launch Docker
 echo -e "${YELLOW}[Step 5] Launching Containers...${NC}"
+mkdir -p backend/logs
+chmod 777 backend/logs 2>/dev/null
+
 $SUDO_CMD docker-compose down -v 2>/dev/null
 $SUDO_CMD docker-compose up --build -d
 
