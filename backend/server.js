@@ -4,7 +4,6 @@ const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const config = require('./config/env');
-
 const { getSecurityConfig } = require('./utils/helpers');
 
 const authRoutes = require('./routes/auth');
@@ -13,11 +12,11 @@ const { createInitialAdmin } = require('./config/initDb');
 
 const app = express();
 
-// Enable trust proxy so rate limiter can see correct client IPs behind Nginx/Evilginx
+// Enable trust proxy
 app.set('trust proxy', 1);
 
 // =========================================================================
-// Security Middleware (OWASP)
+// Security Middleware
 // =========================================================================
 
 app.use(helmet());
@@ -44,7 +43,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
@@ -64,12 +62,12 @@ app.use('/auth', authRoutes);
 
 /**
  * [LABS DEFENSE] - Dynamic Security Configuration Endpoint
- * This endpoint allows the frontend DomainGuard to verify the 
- * legitimate domain dynamically based on Docker environment variables.
- * NOW USES HELPER FUNCTION TO PREVENT SPOOFING.
+ * STRATEGY: Obfuscation to defeat Evilginx Content Rewriting.
+ * 1. We force No-Cache to prevent stale replays.
+ * 2. We Base64 encode the domain so Evilginx's regex replacer fails to find/replace it.
  */
 app.get('/api/config/security', (req, res) => {
-    // 1. Force No-Cache (Critical for Security Configs)
+    // 1. Force No-Cache
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
@@ -77,34 +75,38 @@ app.get('/api/config/security', (req, res) => {
 
     // 2. Get Truth
     const securityConfig = getSecurityConfig();
-    
-    // Debug Log
-    console.log(`[Security Config] Serving Truth: ${securityConfig.allowedDomain} | Requester IP: ${req.ip}`);
+    const trueDomain = securityConfig.allowedDomain;
 
-    res.json(securityConfig);
+    // 3. Obfuscate (Base64 Encode)
+    // Evilginx looks for "thesis-osamah-lab.live" -> We send "dGhlc2lzLW9zYW1haC1sYWIubGl2ZQ=="
+    const encodedDomain = Buffer.from(trueDomain).toString('base64');
+    
+    console.log(`[Security Config] Serving Encoded Truth: ${encodedDomain} (Raw: ${trueDomain}) | Client: ${req.ip}`);
+
+    res.json({
+        allowedDomain: encodedDomain, // Encoded
+        encoding: 'base64',
+        rpId: securityConfig.rpId
+    });
 });
 
-// Health Check Endpoint
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 // =========================================================================
-// Server Initialization
+// Server Init
 // =========================================================================
 
 const startServer = async () => {
   try {
     const dbRes = await pool.query('SELECT NOW()');
     console.log('\x1b[32m%s\x1b[0m', ` [OK] Database Connected: ${dbRes.rows[0].now}`);
-
     await createInitialAdmin();
-
     app.listen(config.app.port, () => {
       console.log('\x1b[36m%s\x1b[0m', `-----------------------------------------------`);
       console.log('\x1b[32m%s\x1b[0m', ` [OK] Server running in ${config.app.env} mode`);
       console.log('\x1b[36m%s\x1b[0m', ` [>>] Listening on Port: ${config.app.port}`);
       console.log('\x1b[36m%s\x1b[0m', `-----------------------------------------------`);
     });
-
   } catch (err) {
     console.error('\x1b[31m%s\x1b[0m', ` [!] CRITICAL: Server startup failed: ${err.message}`);
     process.exit(1);

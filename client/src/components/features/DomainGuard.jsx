@@ -4,75 +4,77 @@ const DomainGuard = ({ onVerified }) => {
   useEffect(() => {
     const checkDomainIntegrity = async () => {
       try {
-        console.log("%c [Shield] Initializing DomainGuard Sequence...", "color: cyan");
+        // Styled Init Log
+        console.log("%c [Shield] Initializing DomainGuard Sequence...", "color: cyan; font-weight: bold; font-size: 12px;");
 
-        // 1. Get the "Real" Location from the Browser
-        // We use document.baseURI as requested to get the full context
+        // 1. Get Browser Reality
         const currentBaseURI = document.baseURI; 
         const currentURL = new URL(currentBaseURI);
         const currentHostname = currentURL.hostname;
 
-        // 2. Fetch the Authorized Configuration from Backend
-        const response = await fetch('/api/config/security');
-        if (!response.ok) {
-            throw new Error(`Security Config Unreachable (Status: ${response.status})`);
-        }
+        // 2. Fetch Config with Anti-Cache & Anti-Tamper Logic
+        const response = await fetch(`/api/config/security?t=${Date.now()}`);
+        if (!response.ok) throw new Error(`Security Config Unreachable: ${response.status}`);
         
         const config = await response.json();
-        const allowedDomain = config.allowedDomain; // e.g., "thesis-osamah-lab.live"
+        
+        // 3. Decode the Truth (Base64)
+        let allowedDomain = config.allowedDomain;
+        if (config.encoding === 'base64') {
+            try {
+                allowedDomain = atob(config.allowedDomain);
+            } catch (e) {
+                console.error("%c[Shield] Failed to decode config integrity.", "color: red; font-weight: bold;");
+                return; // Fail safe
+            }
+        }
 
-        // ---------------- DIAGNOSTICS (Check Console) ----------------
-        console.log("------------------------------------------------");
-        console.log("🔎 DOMAIN INTEGRITY CHECK");
-        console.log(`📍 Browser BaseURI:   ${currentBaseURI}`);
-        console.log(`🏠 Detected Host:     ${currentHostname}`);
-        console.log(`🔐 Authorized Host:   ${allowedDomain}`);
-        console.log("------------------------------------------------");
-        // -------------------------------------------------------------
+        // ---------------- DIAGNOSTICS ----------------
+        // Styles for the table-like output
+        const labelStyle = "color: #3498db; font-weight: bold; padding-right: 10px;"; // Blue
+        const valueStyle = "color: #f1c40f; font-weight: bold;"; // Yellow
+        const dividerStyle = "color: #7f8c8d; font-weight: bold;"; // Grey
 
-        // 3. The Comparison Logic
-        // Allow Localhost for testing
+        console.log("%c------------------------------------------------", dividerStyle);
+        console.log(`%c Browser Host:      %c${currentHostname}`, labelStyle, valueStyle);
+        console.log(`%c Authorized (Dec):  %c${allowedDomain}`, labelStyle, valueStyle);
+        console.log(`%c Received (Raw):    %c${config.allowedDomain}`, labelStyle, valueStyle);
+        console.log("%c------------------------------------------------", dividerStyle);
+        // ---------------------------------------------
+
+        // 4. Verification Logic
         const isLocal = currentHostname === 'localhost' || currentHostname === '127.0.0.1';
-
-        // Strict Check: Does the current host match the allowed domain?
-        // We use .endsWith to allow subdomains like 'www.'
         const isSecure = allowedDomain && (
             currentHostname === allowedDomain || 
             currentHostname.endsWith(`.${allowedDomain}`)
         );
 
-        // 4. IMMEDIATE ACTION
+        // 5. Action
         if (!isLocal && !isSecure) {
-          console.error(`[CRITICAL] Phishing Detected! Origin '${currentHostname}' does not match '${allowedDomain}'`);
+          // Critical Red Alert with large font
+          console.error(
+              `%c[CRITICAL] Phishing Detected! '${currentHostname}' != '${allowedDomain}'`, 
+              "color: #e74c3c; font-weight: 900; font-size: 16px; background: #fff0f0; padding: 5px; border: 1px solid red;"
+          );
           
-          // A. Kill the Page Execution
           window.stop();
-          
-          // B. Wipe the DOM (Show Blank)
           document.body.innerHTML = '';
-          document.head.innerHTML = '';
-          
-          // C. Force Redirect (Optional: trap the user)
           window.location.href = 'about:blank';
           return;
         }
 
-        // 5. Success
-        console.log("%c [Shield] Integrity Verified. Access Granted.", "color: green");
+        console.log("%c [Shield] Integrity Verified.", "color: #2ecc71; font-weight: bold; font-size: 12px;");
         if (onVerified) onVerified();
 
       } catch (err) {
-        // Fail-Safe: If we can't verify, we MUST assume we are under attack unless on localhost
-        console.error("[Shield] Verification Error:", err);
+        console.error(`%c[Shield] Verification Error: ${err.message}`, "color: red; font-weight: bold;");
         
-        // Strict Fallback: Check if we are clearly on the known legitimate domain
-        // This handles cases where API might fail but domain is correct
+        // Fail-safe logic...
         if (!window.location.hostname.includes('thesis-osamah-lab.live') && 
             !window.location.hostname.includes('localhost')) {
-            document.body.innerHTML = '<h1>Security Check Failed</h1>';
+            document.body.innerHTML = '';
             window.stop();
         } else {
-             // If on real domain but API failed, allow access (Availability vs Security trade-off)
              if (onVerified) onVerified();
         }
       }
@@ -81,7 +83,6 @@ const DomainGuard = ({ onVerified }) => {
     checkDomainIntegrity();
   }, [onVerified]);
 
-  // Render nothing while checking
   return null;
 };
 
